@@ -34,10 +34,20 @@
   header h1{
     font-size:20px;
     font-weight:600;
-    margin:0 0 18px;
+    margin:0;
     letter-spacing:-0.01em;
     color:var(--text);
   }
+  .header-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .header-actions{display:flex;gap:8px;}
+  .header-actions button{font-size:12px;padding:6px 12px;}
   nav.tabs{
     display:flex;
     gap:4px;
@@ -319,7 +329,14 @@
 <body>
 <div class="app">
   <header>
-    <h1>Life Tracker</h1>
+    <div class="header-top">
+      <h1>Life Tracker</h1>
+      <div class="header-actions">
+        <button class="ghost" id="btn-export">Export Data</button>
+        <button class="ghost" id="btn-import">Import Data</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display:none">
+      </div>
+    </div>
     <nav class="tabs">
       <button class="tab-btn active" data-tab="ideas">Ideas</button>
       <button class="tab-btn" data-tab="projects">Projects</button>
@@ -1435,6 +1452,69 @@
       var addBtn = card.querySelector('[data-action="add-installment"]');
       if(addBtn) addBtn.click();
     }
+  });
+
+  /* ---------- export / import ---------- */
+  function exportData(){
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "life-tracker-backup-" + todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function cloneWithFreshIds(item, nestedKey){
+    var clone = JSON.parse(JSON.stringify(item));
+    clone.id = uid();
+    if(nestedKey && Array.isArray(clone[nestedKey])){
+      clone[nestedKey] = clone[nestedKey].map(function(sub){
+        var subClone = JSON.parse(JSON.stringify(sub));
+        subClone.id = uid();
+        return subClone;
+      });
+    }
+    return clone;
+  }
+
+  function importData(jsonText){
+    var imported;
+    try{
+      imported = JSON.parse(jsonText);
+    }catch(e){
+      alert("Could not import file: invalid JSON.");
+      return;
+    }
+    var nestedKeyFor = { projects: "grades", sales: "installments" };
+    var keys = ["ideas","projects","goals","jobTasks","tasks","savings","paychecks","sales"];
+    var count = 0;
+    keys.forEach(function(k){
+      if(Array.isArray(imported[k])){
+        imported[k].forEach(function(item){
+          data[k].push(cloneWithFreshIds(item, nestedKeyFor[k]));
+          count++;
+        });
+      }
+    });
+    save();
+    renderAll();
+    alert("Imported " + count + " entr" + (count === 1 ? "y" : "ies") + ".");
+  }
+
+  document.getElementById("btn-export").addEventListener("click", exportData);
+  document.getElementById("btn-import").addEventListener("click", function(){
+    document.getElementById("import-file-input").click();
+  });
+  document.getElementById("import-file-input").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){ importData(evt.target.result); };
+    reader.readAsText(file);
+    e.target.value = "";
   });
 
   renderAll();
