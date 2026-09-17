@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life Tracker</title>
+<style>
+  :root{
+    --bg:#121214;
+    --bg-elev:#1a1a1d;
+    --card:#1e1e22;
+    --card-hover:#232327;
+    --border:#2c2c31;
+    --text:#e4e4e7;
+    --text-soft:#a1a1aa;
+    --text-faint:#6b6b73;
+    --accent:#8b8bf5;
+    --accent-soft:#8b8bf522;
+    --green:#5fd48a;
+    --yellow:#e3b95c;
+    --red:#e5787c;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .app{max-width:920px;margin:0 auto;padding:28px 20px 80px;}
+  header h1{
+    font-size:20px;
+    font-weight:600;
+    margin:0 0 18px;
+    letter-spacing:-0.01em;
+    color:var(--text);
+  }
+  nav.tabs{
+    display:flex;
+    gap:4px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:24px;
+    overflow-x:auto;
+  }
+  .tab-btn{
+    background:none;
+    border:none;
+    color:var(--text-soft);
+    padding:10px 14px;
+    font-size:13.5px;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    white-space:nowrap;
+    transition:color .15s;
+  }
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .panel-toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+  .filters{display:flex;gap:6px;flex-wrap:wrap;}
+  .filter-btn{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    color:var(--text-soft);
+    padding:6px 12px;
+    border-radius:20px;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .filter-btn.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+  button.primary{
+    background:var(--accent);
+    color:#141420;
+    border:none;
+    padding:8px 16px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.primary:hover{opacity:.9;}
+  button.ghost{
+    background:none;
+    border:1px solid var(--border);
+    color:var(--text-soft);
+    padding:7px 14px;
+    border-radius:8px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  button.ghost:hover{color:var(--text);border-color:var(--text-faint);}
+  button.icon-btn{
+    background:none;
+    border:none;
+    color:var(--text-faint);
+    cursor:pointer;
+    font-size:13px;
+    padding:4px 6px;
+    border-radius:6px;
+  }
+  button.icon-btn:hover{color:var(--red);background:#ffffff08;}
+  .empty-state{
+    color:var(--text-faint);
+    text-align:center;
+    padding:50px 20px;
+    font-size:13.5px;
+    border:1px dashed var(--border);
+    border-radius:var(--radius);
+  }
+  .card-list{display:flex;flex-direction:column;gap:10px;}
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    transition:border-color .15s;
+  }
+  .card:hover{border-color:#3a3a41;}
+  .card.done{opacity:.55;}
+  .card-top{display:flex;align-items:flex-start;gap:10px;}
+  .card-check{
+    width:18px;height:18px;
+    accent-color:var(--accent);
+    margin-top:2px;
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .card-main{flex:1;min-width:0;}
+  .card-title-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:4px;
+  }
+  .card-title{font-weight:600;font-size:14.5px;color:var(--text);}
+  .card.done .card-title{text-decoration:line-through;color:var(--text-faint);}
+  .badge{
+    font-size:10.5px;
+    padding:2px 8px;
+    border-radius:20px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+  }
+  .badge-college{background:#8b8bf522;color:#a5a5f7;}
+  .badge-business{background:#e3b95c22;color:#e3b95c;}
+  .badge-work{background:#5fd48a22;color:#5fd48a;}
+  .badge-personal{background:#e5787c22;color:#e5787c;}
+  .badge-status{background:#ffffff10;color:var(--text-soft);}
+  .status-done{background:#5fd48a22;color:#5fd48a;}
+  .status-inprogress{background:#e3b95c22;color:#e3b95c;}
+  .status-notstarted{background:#ffffff10;color:var(--text-soft);}
+  .status-applied{background:#8b8bf522;color:#a5a5f7;}
+  .status-interview{background:#e3b95c22;color:#e3b95c;}
+  .status-offer{background:#5fd48a22;color:#5fd48a;}
+  .status-rejected{background:#e5787c22;color:#e5787c;}
+  .card-meta{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    font-size:12px;
+    color:var(--text-faint);
+    margin-bottom:6px;
+  }
+  .card-notes{
+    font-size:13px;
+    color:var(--text-soft);
+    white-space:pre-wrap;
+    margin-top:6px;
+    line-height:1.55;
+  }
+  .card-actions{display:flex;gap:2px;flex-shrink:0;}
+  .grades-block{
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--border);
+  }
+  .grades-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .grades-header span{font-size:12px;font-weight:600;color:var(--text-soft);text-transform:uppercase;letter-spacing:.03em;}
+  .grade-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:6px 10px;
+    background:var(--bg-elev);
+    border-radius:6px;
+    margin-bottom:5px;
+    font-size:13px;
+  }
+  .grade-row span.g-name{color:var(--text);}
+  .grade-row span.g-score{color:var(--accent);font-weight:600;}
+  .grade-add-row{display:flex;gap:6px;margin-top:6px;}
+  .grade-add-row input{flex:1;}
+  /* form */
+  .form-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:#00000099;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+    overflow-y:auto;
+    z-index:100;
+  }
+  .form-overlay.open{display:flex;}
+  .form-card{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px;
+    width:100%;
+    max-width:440px;
+  }
+  .form-card h3{margin:0 0 16px;font-size:15px;font-weight:600;}
+  .field{margin-bottom:13px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--text-soft);
+    margin-bottom:5px;
+  }
+  input,select,textarea{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:7px;
+    font-size:13.5px;
+    font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
+  textarea{resize:vertical;min-height:64px;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .form-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:18px;
+  }
+  .checkbox-field{display:flex;align-items:center;gap:8px;}
+  .checkbox-field input{width:16px;height:16px;accent-color:var(--accent);}
+  .checkbox-field label{margin:0;}
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:#333338;border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Life Tracker</h1>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="ideas">Ideas</button>
+      <button class="tab-btn" data-tab="projects">Projects</button>
+      <button class="tab-btn" data-tab="goals">Goals</button>
+      <button class="tab-btn" data-tab="jobs">Job Search</button>
+      <button class="tab-btn" data-tab="tasks">Tasks</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- IDEAS -->
+    <section class="tab-panel active" id="tab-ideas">
+      <div class="panel-toolbar">
+        <div></div>
+        <button class="primary" data-open-form="idea">+ Add Idea</button>
+      </div>
+      <div class="card-list" id="list-ideas"></div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="tab-panel" id="tab-projects">
+      <div class="panel-toolbar">
+        <div class="filters" id="filters-projects">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="college">College</button>
+          <button class="filter-btn" data-filter="business">Business</button>
+          <button class="filter-btn" data-filter="work">Work</button>
+          <button class="filter-btn" data-filter="personal">Personal</button>
+        </div>
+        <button class="primary" data-open-form="project">+ Add Project</button>
+      </div>
+      <div class="card-list" id="list-projects"></div>
+    </section>
+
+    <!-- GOALS -->
+    <section class="tab-panel" id="tab-goals">
+      <div class="panel-toolbar">
+        <div class="filters" id="filters-goals">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="short">Short-term</button>
+          <button class="filter-btn" data-filter="long">Long-term</button>
+        </div>
+        <button class="primary" data-open-form="goal">+ Add Goal</button>
+      </div>
+      <div class="card-list" id="list-goals"></div>
+    </section>
+
+    <!-- JOB SEARCH -->
+    <section class="tab-panel" id="tab-jobs">
+      <div class="panel-toolbar">
+        <div class="filters" id="filters-jobs">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="applied">Applied</button>
+          <button class="filter-btn" data-filter="interview">Interview</button>
+          <button class="filter-btn" data-filter="offer">Offer</button>
+          <button class="filter-btn" data-filter="rejected">Rejected</button>
+        </div>
+        <button class="primary" data-open-form="job">+ Add Application</button>
+      </div>
+      <div class="card-list" id="list-jobs"></div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="tab-panel" id="tab-tasks">
+      <div class="panel-toolbar">
+        <div class="filters" id="filters-tasks">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="open">Open</button>
+          <button class="filter-btn" data-filter="done">Done</button>
+        </div>
+        <button class="primary" data-open-form="task">+ Add Task</button>
+      </div>
+      <div class="card-list" id="list-tasks"></div>
+    </section>
+  </main>
+</div>
+
+<!-- FORM OVERLAY -->
+<div class="form-overlay" id="form-overlay">
+  <div class="form-card">
+    <h3 id="form-title">Add</h3>
+    <form id="entry-form">
+      <input type="hidden" id="f-id">
+
+      <!-- generic name field (idea/project/goal/task title, job uses role) -->
+      <div class="field" id="f-name-wrap">
+        <label id="f-name-label">Title</label>
+        <input type="text" id="f-name" placeholder="e.g. Build a mobile app">
+      </div>
+
+      <!-- project category -->
+      <div class="field" id="f-category-wrap" style="display:none">
+        <label>Category</label>
+        <select id="f-category">
+          <option value="college">College</option>
+          <option value="business">Business</option>
+          <option value="work">Work</option>
+          <option value="personal">Personal</option>
+        </select>
+      </div>
+
+      <!-- goal term -->
+      <div class="field" id="f-term-wrap" style="display:none">
+        <label>Term</label>
+        <select id="f-term">
+          <option value="short">Short-term</option>
+          <option value="long">Long-term</option>
+        </select>
+      </div>
+
+      <!-- job specific fields -->
+      <div class="field" id="f-company-wrap" style="display:none">
+        <label>Company</label>
+        <input type="text" id="f-company" placeholder="e.g. Acme Corp">
+      </div>
+
+      <!-- date added (ideas) -->
+      <div class="field" id="f-dateadded-wrap" style="display:none">
+        <label>Date Added</label>
+        <input type="date" id="f-dateadded">
+      </div>
+
+      <!-- date applied (jobs) -->
+      <div class="field" id="f-dateapplied-wrap" style="display:none">
+        <label>Date Applied</label>
+        <input type="date" id="f-dateapplied">
+      </div>
+
+      <!-- start/due dates (projects) -->
+      <div class="field-row" id="f-projectdates-wrap" style="display:none">
+        <div class="field">
+          <label>Start Date</label>
+          <input type="date" id="f-startdate">
+        </div>
+        <div class="field">
+          <label>Due Date</label>
+          <input type="date" id="f-duedate">
+        </div>
+      </div>
+
+      <!-- target date (goals) -->
+      <div class="field" id="f-targetdate-wrap" style="display:none">
+        <label>Target Date</label>
+        <input type="date" id="f-targetdate">
+      </div>
+
+      <!-- due date (tasks) -->
+      <div class="field" id="f-taskdue-wrap" style="display:none">
+        <label>Due Date</label>
+        <input type="date" id="f-taskdue">
+      </div>
+
+      <!-- link to project (tasks) -->
+      <div class="field" id="f-linkproject-wrap" style="display:none">
+        <label>Linked Project (optional)</label>
+        <select id="f-linkproject">
+          <option value="">Standalone</option>
+        </select>
+      </div>
+
+      <!-- status: project status / goal progress / job status -->
+      <div class="field" id="f-status-wrap" style="display:none">
+        <label id="f-status-label">Status</label>
+        <select id="f-status"></select>
+      </div>
+
+      <!-- complete checkbox: project/goal/task -->
+      <div class="field checkbox-field" id="f-complete-wrap" style="display:none">
+        <input type="checkbox" id="f-complete">
+        <label for="f-complete">Mark as complete</label>
+      </div>
+
+      <!-- notes -->
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="f-notes" placeholder="Write freely..."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="ghost" id="form-cancel">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "lifeTrackerData";
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function fmtDate(d){
+    if(!d) return "—";
+    var parts = d.split("-");
+    if(parts.length !== 3) return d;
+    var dt = new Date(parts[0], parts[1]-1, parts[2]);
+    return dt.toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"});
+  }
+  function esc(s){
+    if(s === undefined || s === null) return "";
+    var div = document.createElement("div");
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  var defaultData = { ideas: [], projects: [], goals: [], jobs: [], tasks: [] };
+  var data;
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    data = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(defaultData));
+  }catch(e){
+    data = JSON.parse(JSON.stringify(defaultData));
+  }
+  ["ideas","projects","goals","jobs","tasks"].forEach(function(k){
+    if(!Array.isArray(data[k])) data[k] = [];
+  });
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  /* ---------- tabs ---------- */
+  var tabBtns = document.querySelectorAll(".tab-btn");
+  tabBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      tabBtns.forEach(function(b){ b.classList.remove("active"); });
+      document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  /* ---------- filters ---------- */
+  var activeFilters = { projects: "all", goals: "all", jobs: "all", tasks: "all" };
+  ["projects","goals","jobs","tasks"].forEach(function(section){
+    var wrap = document.getElementById("filters-" + section);
+    wrap.addEventListener("click", function(e){
+      var btn = e.target.closest(".filter-btn");
+      if(!btn) return;
+      wrap.querySelectorAll(".filter-btn").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      activeFilters[section] = btn.dataset.filter;
+      renderAll();
+    });
+  });
+
+  /* ---------- form overlay logic ---------- */
+  var overlay = document.getElementById("form-overlay");
+  var form = document.getElementById("entry-form");
+  var formTitle = document.getElementById("form-title");
+  var currentType = null; // idea/project/goal/job/task
+  var editingId = null;
+
+  var fieldGroups = {
+    idea: ["f-dateadded-wrap"],
+    project: ["f-category-wrap","f-projectdates-wrap","f-status-wrap","f-complete-wrap"],
+    goal: ["f-term-wrap","f-targetdate-wrap","f-status-wrap","f-complete-wrap"],
+    job: ["f-company-wrap","f-dateapplied-wrap","f-status-wrap"],
+    task: ["f-taskdue-wrap","f-linkproject-wrap","f-complete-wrap"]
+  };
+
+  var statusOptions = {
+    project: [["notstarted","Not Started"],["inprogress","In Progress"],["done","Done"]],
+    goal: [["notstarted","Not Started"],["inprogress","In Progress"],["done","Done"]],
+    job: [["applied","Applied"],["interview","Interview"],["offer","Offer"],["rejected","Rejected"]]
+  };
+
+  function resetForm(){
+    form.reset();
+    document.getElementById("f-id").value = "";
+    editingId = null;
+  }
+
+  function openForm(type, entry){
+    currentType = type;
+    resetForm();
+    // hide all conditional groups
+    var allWraps = ["f-category-wrap","f-term-wrap","f-company-wrap","f-dateadded-wrap",
+      "f-dateapplied-wrap","f-projectdates-wrap","f-targetdate-wrap","f-taskdue-wrap",
+      "f-linkproject-wrap","f-status-wrap","f-complete-wrap"];
+    allWraps.forEach(function(id){ document.getElementById(id).style.display = "none"; });
+    (fieldGroups[type] || []).forEach(function(id){ document.getElementById(id).style.display = ""; });
+
+    var nameLabel = document.getElementById("f-name-label");
+    var nameWrap = document.getElementById("f-name-wrap");
+    nameWrap.style.display = "";
+    if(type === "idea"){
+      formTitle.textContent = entry ? "Edit Idea" : "Add Idea";
+      nameLabel.textContent = "Idea";
+      document.getElementById("f-name").placeholder = "What's the idea?";
+    } else if(type === "project"){
+      formTitle.textContent = entry ? "Edit Project" : "Add Project";
+      nameLabel.textContent = "Project Name";
+      document.getElementById("f-name").placeholder = "e.g. Thesis Research";
+      populateStatus("project");
+    } else if(type === "goal"){
+      formTitle.textContent = entry ? "Edit Goal" : "Add Goal";
+      nameLabel.textContent = "Goal";
+      document.getElementById("f-name").placeholder = "e.g. Run a half marathon";
+      populateStatus("goal");
+    } else if(type === "job"){
+      formTitle.textContent = entry ? "Edit Application" : "Add Application";
+      nameLabel.textContent = "Role Title";
+      document.getElementById("f-name").placeholder = "e.g. Frontend Engineer";
+      populateStatus("job");
+    } else if(type === "task"){
+      formTitle.textContent = entry ? "Edit Task" : "Add Task";
+      nameLabel.textContent = "Task";
+      document.getElementById("f-name").placeholder = "e.g. Finish slide deck";
+      populateProjectLink();
+    }
+
+    if(entry){
+      editingId = entry.id;
+      document.getElementById("f-id").value = entry.id;
+      document.getElementById("f-name").value = entry.name || "";
+      document.getElementById("f-notes").value = entry.notes || "";
+      if(type === "idea"){
+        document.getElementById("f-dateadded").value = entry.date || todayStr();
+      } else if(type === "project"){
+        document.getElementById("f-category").value = entry.category || "personal";
+        document.getElementById("f-startdate").value = entry.startDate || "";
+        document.getElementById("f-duedate").value = entry.dueDate || "";
+        document.getElementById("f-status").value = entry.status || "notstarted";
+        document.getElementById("f-complete").checked = !!entry.complete;
+      } else if(type === "goal"){
+        document.getElementById("f-term").value = entry.term || "short";
+        document.getElementById("f-targetdate").value = entry.targetDate || "";
+        document.getElementById("f-status").value = entry.status || "notstarted";
+        document.getElementById("f-complete").checked = !!entry.complete;
+      } else if(type === "job"){
+        document.getElementById("f-company").value = entry.company || "";
+        document.getElementById("f-dateapplied").value = entry.dateApplied || "";
+        document.getElementById("f-status").value = entry.status || "applied";
+      } else if(type === "task"){
+        document.getElementById("f-taskdue").value = entry.dueDate || "";
+        document.getElementById("f-linkproject").value = entry.projectId || "";
+        document.getElementById("f-complete").checked = !!entry.complete;
+      }
+    } else {
+      if(type === "idea") document.getElementById("f-dateadded").value = todayStr();
+      if(type === "project") document.getElementById("f-startdate").value = todayStr();
+      if(type === "job") document.getElementById("f-dateapplied").value = todayStr();
+    }
+
+    overlay.classList.add("open");
+    document.getElementById("f-name").focus();
+  }
+
+  function populateStatus(type){
+    var sel = document.getElementById("f-status");
+    sel.innerHTML = "";
+    statusOptions[type].forEach(function(opt){
+      var o = document.createElement("option");
+      o.value = opt[0]; o.textContent = opt[1];
+      sel.appendChild(o);
+    });
+    document.getElementById("f-status-label").textContent = type === "job" ? "Status" : (type === "goal" ? "Progress" : "Status");
+  }
+
+  function populateProjectLink(){
+    var sel = document.getElementById("f-linkproject");
+    sel.innerHTML = '<option value="">Standalone</option>';
+    data.projects.forEach(function(p){
+      var o = document.createElement("option");
+      o.value = p.id; o.textContent = p.name;
+      sel.appendChild(o);
+    });
+  }
+
+  function closeForm(){
+    overlay.classList.remove("open");
+    currentType = null;
+    editingId = null;
+  }
+
+  document.querySelectorAll("[data-open-form]").forEach(function(btn){
+    btn.addEventListener("click", function(){ openForm(btn.dataset.openForm, null); });
+  });
+  document.getElementById("form-cancel").addEventListener("click", closeForm);
+  overlay.addEventListener("click", function(e){ if(e.target === overlay) closeForm(); });
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    var name = document.getElementById("f-name").value.trim();
+    var notes = document.getElementById("f-notes").value.trim();
+    if(!name) { document.getElementById("f-name").focus(); return; }
+
+    if(currentType === "idea"){
+      var entry = editingId ? findById("ideas", editingId) : { id: uid() };
+      entry.name = name;
+      entry.date = document.getElementById("f-dateadded").value || todayStr();
+      entry.notes = notes;
+      if(!editingId) data.ideas.unshift(entry);
+    } else if(currentType === "project"){
+      var pEntry = editingId ? findById("projects", editingId) : { id: uid(), grades: [] };
+      pEntry.name = name;
+      pEntry.category = document.getElementById("f-category").value;
+      pEntry.startDate = document.getElementById("f-startdate").value;
+      pEntry.dueDate = document.getElementById("f-duedate").value;
+      pEntry.status = document.getElementById("f-status").value;
+      pEntry.complete = document.getElementById("f-complete").checked;
+      pEntry.notes = notes;
+      if(!pEntry.grades) pEntry.grades = [];
+      if(!editingId) data.projects.unshift(pEntry);
+    } else if(currentType === "goal"){
+      var gEntry = editingId ? findById("goals", editingId) : { id: uid() };
+      gEntry.name = name;
+      gEntry.term = document.getElementById("f-term").value;
+      gEntry.targetDate = document.getElementById("f-targetdate").value;
+      gEntry.status = document.getElementById("f-status").value;
+      gEntry.complete = document.getElementById("f-complete").checked;
+      gEntry.notes = notes;
+      if(!editingId) data.goals.unshift(gEntry);
+    } else if(currentType === "job"){
+      var jEntry = editingId ? findById("jobs", editingId) : { id: uid() };
+      jEntry.name = name;
+      jEntry.company = document.getElementById("f-company").value.trim();
+      jEntry.dateApplied = document.getElementById("f-dateapplied").value || todayStr();
+      jEntry.status = document.getElementById("f-status").value;
+      jEntry.notes = notes;
+      if(!editingId) data.jobs.unshift(jEntry);
+    } else if(currentType === "task"){
+      var tEntry = editingId ? findById("tasks", editingId) : { id: uid() };
+      tEntry.name = name;
+      tEntry.dueDate = document.getElementById("f-taskdue").value;
+      tEntry.projectId = document.getElementById("f-linkproject").value || null;
+      tEntry.complete = document.getElementById("f-complete").checked;
+      tEntry.notes = notes;
+      if(!editingId) data.tasks.unshift(tEntry);
+    }
+
+    save();
+    closeForm();
+    renderAll();
+  });
+
+  function findById(section, id){
+    return data[section].find(function(x){ return x.id === id; });
+  }
+  function removeById(section, id){
+    data[section] = data[section].filter(function(x){ return x.id !== id; });
+  }
+
+  /* ---------- rendering ---------- */
+  function statusBadgeClass(status){
+    return "status-" + status;
+  }
+  function statusLabel(status){
+    var map = { notstarted:"Not Started", inprogress:"In Progress", done:"Done",
+      applied:"Applied", interview:"Interview", offer:"Offer", rejected:"Rejected" };
+    return map[status] || status;
+  }
+
+  function renderIdeas(){
+    var list = document.getElementById("list-ideas");
+    var items = data.ideas;
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No ideas yet. Drop your first one in.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(it){
+      return (
+        '<div class="card" data-id="'+it.id+'" data-section="ideas">' +
+          '<div class="card-top">' +
+            '<div class="card-main">' +
+              '<div class="card-title-row"><span class="card-title">'+esc(it.name)+'</span></div>' +
+              '<div class="card-meta"><span>Added '+fmtDate(it.date)+'</span></div>' +
+              (it.notes ? '<div class="card-notes">'+esc(it.notes)+'</div>' : '') +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderProjects(){
+    var list = document.getElementById("list-projects");
+    var filter = activeFilters.projects;
+    var items = data.projects.filter(function(p){ return filter === "all" || p.category === filter; });
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No projects here yet.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(p){
+      var gradesHtml = "";
+      if(p.category === "college"){
+        var rows = (p.grades || []).map(function(g){
+          return '<div class="grade-row" data-grade-id="'+g.id+'">' +
+            '<span class="g-name">'+esc(g.assignment)+'</span>' +
+            '<span><span class="g-score">'+esc(g.grade)+'</span> ' +
+            '<button class="icon-btn" data-action="delete-grade" data-grade-id="'+g.id+'">✕</button></span>' +
+            '</div>';
+        }).join("");
+        gradesHtml =
+          '<div class="grades-block">' +
+            '<div class="grades-header"><span>Grades</span></div>' +
+            rows +
+            '<div class="grade-add-row">' +
+              '<input type="text" placeholder="Assignment name" class="grade-name-input">' +
+              '<input type="text" placeholder="Grade" class="grade-score-input" style="max-width:90px">' +
+              '<button class="ghost" data-action="add-grade" style="padding:6px 12px;font-size:12px;">Add</button>' +
+            '</div>' +
+          '</div>';
+      }
+      return (
+        '<div class="card '+(p.complete?'done':'')+'" data-id="'+p.id+'" data-section="projects">' +
+          '<div class="card-top">' +
+            '<input type="checkbox" class="card-check" data-action="toggle" '+(p.complete?'checked':'')+'>' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">'+esc(p.name)+'</span>' +
+                '<span class="badge badge-'+p.category+'">'+p.category+'</span>' +
+                '<span class="badge badge-status '+statusBadgeClass(p.status)+'">'+statusLabel(p.status)+'</span>' +
+              '</div>' +
+              '<div class="card-meta">' +
+                '<span>Start '+fmtDate(p.startDate)+'</span>' +
+                '<span>Due '+fmtDate(p.dueDate)+'</span>' +
+              '</div>' +
+              (p.notes ? '<div class="card-notes">'+esc(p.notes)+'</div>' : '') +
+              gradesHtml +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderGoals(){
+    var list = document.getElementById("list-goals");
+    var filter = activeFilters.goals;
+    var items = data.goals.filter(function(g){ return filter === "all" || g.term === filter; });
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No goals set yet.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(g){
+      return (
+        '<div class="card '+(g.complete?'done':'')+'" data-id="'+g.id+'" data-section="goals">' +
+          '<div class="card-top">' +
+            '<input type="checkbox" class="card-check" data-action="toggle" '+(g.complete?'checked':'')+'>' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">'+esc(g.name)+'</span>' +
+                '<span class="badge badge-status">'+(g.term === "short" ? "Short-term" : "Long-term")+'</span>' +
+                '<span class="badge badge-status '+statusBadgeClass(g.status)+'">'+statusLabel(g.status)+'</span>' +
+              '</div>' +
+              '<div class="card-meta"><span>Target '+fmtDate(g.targetDate)+'</span></div>' +
+              (g.notes ? '<div class="card-notes">'+esc(g.notes)+'</div>' : '') +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderJobs(){
+    var list = document.getElementById("list-jobs");
+    var filter = activeFilters.jobs;
+    var items = data.jobs.filter(function(j){ return filter === "all" || j.status === filter; });
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No applications logged yet.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(j){
+      return (
+        '<div class="card" data-id="'+j.id+'" data-section="jobs">' +
+          '<div class="card-top">' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">'+esc(j.name)+'</span>' +
+                (j.company ? '<span style="color:var(--text-faint);font-size:12.5px;">@ '+esc(j.company)+'</span>' : '') +
+                '<span class="badge badge-status '+statusBadgeClass(j.status)+'">'+statusLabel(j.status)+'</span>' +
+              '</div>' +
+              '<div class="card-meta"><span>Applied '+fmtDate(j.dateApplied)+'</span></div>' +
+              (j.notes ? '<div class="card-notes">'+esc(j.notes)+'</div>' : '') +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderTasks(){
+    var list = document.getElementById("list-tasks");
+    var filter = activeFilters.tasks;
+    var items = data.tasks.filter(function(t){
+      if(filter === "open") return !t.complete;
+      if(filter === "done") return !!t.complete;
+      return true;
+    });
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No tasks yet. Add one to get started.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(t){
+      var proj = t.projectId ? findById("projects", t.projectId) : null;
+      return (
+        '<div class="card '+(t.complete?'done':'')+'" data-id="'+t.id+'" data-section="tasks">' +
+          '<div class="card-top">' +
+            '<input type="checkbox" class="card-check" data-action="toggle" '+(t.complete?'checked':'')+'>' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">'+esc(t.name)+'</span>' +
+                (proj ? '<span class="badge badge-status">'+esc(proj.name)+'</span>' : '') +
+              '</div>' +
+              '<div class="card-meta"><span>Due '+fmtDate(t.dueDate)+'</span></div>' +
+              (t.notes ? '<div class="card-notes">'+esc(t.notes)+'</div>' : '') +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderAll(){
+    renderIdeas();
+    renderProjects();
+    renderGoals();
+    renderJobs();
+    renderTasks();
+  }
+
+  /* ---------- event delegation for card actions ---------- */
+  document.getElementById("list-ideas").addEventListener("click", function(e){ handleCardClick(e, "ideas", "idea"); });
+  document.getElementById("list-projects").addEventListener("click", function(e){ handleCardClick(e, "projects", "project"); });
+  document.getElementById("list-goals").addEventListener("click", function(e){ handleCardClick(e, "goals", "goal"); });
+  document.getElementById("list-jobs").addEventListener("click", function(e){ handleCardClick(e, "jobs", "job"); });
+  document.getElementById("list-tasks").addEventListener("click", function(e){ handleCardClick(e, "tasks", "task"); });
+
+  document.getElementById("list-projects").addEventListener("change", function(e){
+    if(e.target.classList.contains("card-check")){
+      var card = e.target.closest(".card");
+      var entry = findById("projects", card.dataset.id);
+      entry.complete = e.target.checked;
+      entry.status = e.target.checked ? "done" : entry.status;
+      save();
+      renderProjects();
+    }
+  });
+  document.getElementById("list-goals").addEventListener("change", function(e){
+    if(e.target.classList.contains("card-check")){
+      var card = e.target.closest(".card");
+      var entry = findById("goals", card.dataset.id);
+      entry.complete = e.target.checked;
+      entry.status = e.target.checked ? "done" : entry.status;
+      save();
+      renderGoals();
+    }
+  });
+  document.getElementById("list-tasks").addEventListener("change", function(e){
+    if(e.target.classList.contains("card-check")){
+      var card = e.target.closest(".card");
+      var entry = findById("tasks", card.dataset.id);
+      entry.complete = e.target.checked;
+      save();
+      renderTasks();
+    }
+  });
+
+  function handleCardClick(e, section, type){
+    var card = e.target.closest(".card");
+    if(!card) return;
+    var id = card.dataset.id;
+    var action = e.target.dataset.action;
+
+    if(action === "edit"){
+      openForm(type, findById(section, id));
+    } else if(action === "delete"){
+      if(confirm("Delete this entry? This can't be undone.")){
+        removeById(section, id);
+        save();
+        renderAll();
+      }
+    } else if(action === "add-grade"){
+      var nameInput = card.querySelector(".grade-name-input");
+      var scoreInput = card.querySelector(".grade-score-input");
+      var assignment = nameInput.value.trim();
+      var grade = scoreInput.value.trim();
+      if(!assignment || !grade) return;
+      var proj = findById("projects", id);
+      if(!proj.grades) proj.grades = [];
+      proj.grades.push({ id: uid(), assignment: assignment, grade: grade });
+      save();
+      renderProjects();
+    } else if(action === "delete-grade"){
+      var gid = e.target.dataset.gradeId;
+      var proj2 = findById("projects", id);
+      proj2.grades = (proj2.grades || []).filter(function(g){ return g.id !== gid; });
+      save();
+      renderProjects();
+    }
+  }
+
+  // allow Enter key inside grade inputs to trigger add
+  document.getElementById("list-projects").addEventListener("keydown", function(e){
+    if(e.key === "Enter" && (e.target.classList.contains("grade-name-input") || e.target.classList.contains("grade-score-input"))){
+      e.preventDefault();
+      var card = e.target.closest(".card");
+      var addBtn = card.querySelector('[data-action="add-grade"]');
+      if(addBtn) addBtn.click();
+    }
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
