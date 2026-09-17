@@ -162,10 +162,10 @@
   .status-done{background:#5fd48a22;color:#5fd48a;}
   .status-inprogress{background:#e3b95c22;color:#e3b95c;}
   .status-notstarted{background:#ffffff10;color:var(--text-soft);}
-  .status-applied{background:#8b8bf522;color:#a5a5f7;}
-  .status-interview{background:#e3b95c22;color:#e3b95c;}
-  .status-offer{background:#5fd48a22;color:#5fd48a;}
-  .status-rejected{background:#e5787c22;color:#e5787c;}
+  .badge-deposit{background:#5fd48a22;color:#5fd48a;}
+  .badge-withdraw{background:#e5787c22;color:#e5787c;}
+  .badge-full{background:#5fd48a22;color:#5fd48a;}
+  .badge-plan{background:#e3b95c22;color:#e3b95c;}
   .card-meta{
     display:flex;
     gap:14px;
@@ -208,6 +208,57 @@
   .grade-row span.g-score{color:var(--accent);font-weight:600;}
   .grade-add-row{display:flex;gap:6px;margin-top:6px;}
   .grade-add-row input{flex:1;}
+  .commission-summary{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    margin-top:10px;
+    padding:10px 12px;
+    background:var(--bg-elev);
+    border-radius:8px;
+    font-size:12.5px;
+  }
+  .commission-summary div span{display:block;color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;}
+  .commission-summary div b{color:var(--text);font-size:14px;}
+  /* section heading */
+  .section-heading{
+    font-size:13px;
+    font-weight:600;
+    color:var(--text-soft);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    margin:26px 0 12px;
+  }
+  .section-heading:first-child{margin-top:0;}
+  /* stats row */
+  .stats-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .stat-tile{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px 16px;
+  }
+  .stat-tile .stat-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .stat-tile .stat-value{font-size:19px;font-weight:700;color:var(--text);}
+  .stat-tile .stat-value.accent{color:var(--accent);}
+  .stat-tile .stat-value.green{color:var(--green);}
+  .stat-tile .stat-value.yellow{color:var(--yellow);}
+  /* balance banner */
+  .balance-banner{
+    background:linear-gradient(135deg,#8b8bf51a,#8b8bf508);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px 20px;
+    margin-bottom:20px;
+    text-align:center;
+  }
+  .balance-banner .bal-label{font-size:12px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+  .balance-banner .bal-value{font-size:32px;font-weight:700;color:var(--accent);}
   /* form */
   .form-overlay{
     display:none;
@@ -273,7 +324,9 @@
       <button class="tab-btn active" data-tab="ideas">Ideas</button>
       <button class="tab-btn" data-tab="projects">Projects</button>
       <button class="tab-btn" data-tab="goals">Goals</button>
-      <button class="tab-btn" data-tab="jobs">Job Search</button>
+      <button class="tab-btn" data-tab="job">Job</button>
+      <button class="tab-btn" data-tab="payroll">Payroll</button>
+      <button class="tab-btn" data-tab="savings">Savings</button>
       <button class="tab-btn" data-tab="tasks">Tasks</button>
     </nav>
   </header>
@@ -316,19 +369,49 @@
       <div class="card-list" id="list-goals"></div>
     </section>
 
-    <!-- JOB SEARCH -->
-    <section class="tab-panel" id="tab-jobs">
+    <!-- JOB (tasks tied to the job) -->
+    <section class="tab-panel" id="tab-job">
       <div class="panel-toolbar">
-        <div class="filters" id="filters-jobs">
+        <div class="filters" id="filters-job">
           <button class="filter-btn active" data-filter="all">All</button>
-          <button class="filter-btn" data-filter="applied">Applied</button>
-          <button class="filter-btn" data-filter="interview">Interview</button>
-          <button class="filter-btn" data-filter="offer">Offer</button>
-          <button class="filter-btn" data-filter="rejected">Rejected</button>
+          <button class="filter-btn" data-filter="open">Open</button>
+          <button class="filter-btn" data-filter="done">Done</button>
         </div>
-        <button class="primary" data-open-form="job">+ Add Application</button>
+        <button class="primary" data-open-form="jobtask">+ Add Job Task</button>
       </div>
-      <div class="card-list" id="list-jobs"></div>
+      <div class="card-list" id="list-job"></div>
+    </section>
+
+    <!-- PAYROLL (base salary + commissions) -->
+    <section class="tab-panel" id="tab-payroll">
+      <div class="stats-row" id="payroll-stats"></div>
+
+      <div class="section-heading">Paychecks</div>
+      <div class="panel-toolbar">
+        <div style="font-size:12.5px;color:var(--text-faint);">Base salary $700/mo &middot; paid on the 1st &amp; 16th</div>
+        <button class="primary" data-open-form="paycheck">+ Add Paycheck</button>
+      </div>
+      <div class="card-list" id="list-paychecks"></div>
+
+      <div class="section-heading">Commissions (10% per sale)</div>
+      <div class="panel-toolbar">
+        <div style="font-size:12.5px;color:var(--text-faint);">Payment-plan sales split commission per installment</div>
+        <button class="primary" data-open-form="sale">+ Add Sale</button>
+      </div>
+      <div class="card-list" id="list-sales"></div>
+    </section>
+
+    <!-- SAVINGS -->
+    <section class="tab-panel" id="tab-savings">
+      <div class="balance-banner">
+        <div class="bal-label">Current Savings</div>
+        <div class="bal-value" id="savings-balance">0 EGP</div>
+      </div>
+      <div class="panel-toolbar">
+        <div></div>
+        <button class="primary" data-open-form="saving">+ Add Entry</button>
+      </div>
+      <div class="card-list" id="list-savings"></div>
     </section>
 
     <!-- TASKS -->
@@ -353,7 +436,7 @@
     <form id="entry-form">
       <input type="hidden" id="f-id">
 
-      <!-- generic name field (idea/project/goal/task title, job uses role) -->
+      <!-- generic name field -->
       <div class="field" id="f-name-wrap">
         <label id="f-name-label">Title</label>
         <input type="text" id="f-name" placeholder="e.g. Build a mobile app">
@@ -379,22 +462,10 @@
         </select>
       </div>
 
-      <!-- job specific fields -->
-      <div class="field" id="f-company-wrap" style="display:none">
-        <label>Company</label>
-        <input type="text" id="f-company" placeholder="e.g. Acme Corp">
-      </div>
-
       <!-- date added (ideas) -->
       <div class="field" id="f-dateadded-wrap" style="display:none">
         <label>Date Added</label>
         <input type="date" id="f-dateadded">
-      </div>
-
-      <!-- date applied (jobs) -->
-      <div class="field" id="f-dateapplied-wrap" style="display:none">
-        <label>Date Applied</label>
-        <input type="date" id="f-dateapplied">
       </div>
 
       <!-- start/due dates (projects) -->
@@ -415,7 +486,7 @@
         <input type="date" id="f-targetdate">
       </div>
 
-      <!-- due date (tasks) -->
+      <!-- due date (tasks / job tasks) -->
       <div class="field" id="f-taskdue-wrap" style="display:none">
         <label>Due Date</label>
         <input type="date" id="f-taskdue">
@@ -429,7 +500,7 @@
         </select>
       </div>
 
-      <!-- status: project status / goal progress / job status -->
+      <!-- status: project status / goal progress -->
       <div class="field" id="f-status-wrap" style="display:none">
         <label id="f-status-label">Status</label>
         <select id="f-status"></select>
@@ -439,6 +510,62 @@
       <div class="field checkbox-field" id="f-complete-wrap" style="display:none">
         <input type="checkbox" id="f-complete">
         <label for="f-complete">Mark as complete</label>
+      </div>
+
+      <!-- savings -->
+      <div class="field" id="f-savingtype-wrap" style="display:none">
+        <label>Type</label>
+        <select id="f-savingtype">
+          <option value="deposit">Deposit (add)</option>
+          <option value="withdraw">Withdraw</option>
+        </select>
+      </div>
+      <div class="field" id="f-savingdate-wrap" style="display:none">
+        <label>Date</label>
+        <input type="date" id="f-savingdate">
+      </div>
+      <div class="field" id="f-savingamount-wrap" style="display:none">
+        <label>Amount (EGP)</label>
+        <input type="number" step="0.01" min="0" id="f-savingamount" placeholder="0.00">
+      </div>
+
+      <!-- paycheck -->
+      <div class="field" id="f-paycheckdate-wrap" style="display:none">
+        <label>Pay Date</label>
+        <input type="date" id="f-paycheckdate">
+      </div>
+      <div class="field" id="f-paycheckamount-wrap" style="display:none">
+        <label>Amount (USD)</label>
+        <input type="number" step="0.01" min="0" id="f-paycheckamount" placeholder="350.00">
+      </div>
+      <div class="field checkbox-field" id="f-paycheckreceived-wrap" style="display:none">
+        <input type="checkbox" id="f-paycheckreceived">
+        <label for="f-paycheckreceived">Received</label>
+      </div>
+
+      <!-- sale / commission -->
+      <div class="field" id="f-saledate-wrap" style="display:none">
+        <label>Sale Date</label>
+        <input type="date" id="f-saledate">
+      </div>
+      <div class="field" id="f-saleamount-wrap" style="display:none">
+        <label>Sale Amount (USD)</label>
+        <input type="number" step="0.01" min="0" id="f-saleamount" placeholder="0.00">
+      </div>
+      <div class="field" id="f-salerate-wrap" style="display:none">
+        <label>Commission Rate (%)</label>
+        <input type="number" step="0.1" min="0" id="f-salerate" value="10">
+      </div>
+      <div class="field" id="f-saletype-wrap" style="display:none">
+        <label>Payment Type</label>
+        <select id="f-saletype">
+          <option value="full">Paid in Full</option>
+          <option value="plan">Payment Plan</option>
+        </select>
+      </div>
+      <div class="field checkbox-field" id="f-salepaidfull-wrap" style="display:none">
+        <input type="checkbox" id="f-salepaidfull">
+        <label for="f-salepaidfull">Commission received</label>
       </div>
 
       <!-- notes -->
@@ -470,14 +597,29 @@
     var dt = new Date(parts[0], parts[1]-1, parts[2]);
     return dt.toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"});
   }
+  function fmtDateObj(dt){
+    return dt.toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"});
+  }
+  function fmtUSD(n){ return "$" + (Number(n)||0).toFixed(2); }
+  function fmtEGP(n){ return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " EGP"; }
   function esc(s){
     if(s === undefined || s === null) return "";
     var div = document.createElement("div");
     div.textContent = s;
     return div.innerHTML;
   }
+  function nextPayDate(){
+    var now = new Date();
+    now.setHours(0,0,0,0);
+    var y = now.getFullYear(), m = now.getMonth();
+    var cands = [new Date(y,m,1), new Date(y,m,16), new Date(y,m+1,1), new Date(y,m+1,16)];
+    for(var i=0;i<cands.length;i++){
+      if(cands[i] >= now) return cands[i];
+    }
+    return cands[cands.length-1];
+  }
 
-  var defaultData = { ideas: [], projects: [], goals: [], jobs: [], tasks: [] };
+  var defaultData = { ideas: [], projects: [], goals: [], jobTasks: [], tasks: [], savings: [], paychecks: [], sales: [] };
   var data;
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
@@ -485,7 +627,7 @@
   }catch(e){
     data = JSON.parse(JSON.stringify(defaultData));
   }
-  ["ideas","projects","goals","jobs","tasks"].forEach(function(k){
+  ["ideas","projects","goals","jobTasks","tasks","savings","paychecks","sales"].forEach(function(k){
     if(!Array.isArray(data[k])) data[k] = [];
   });
 
@@ -505,8 +647,8 @@
   });
 
   /* ---------- filters ---------- */
-  var activeFilters = { projects: "all", goals: "all", jobs: "all", tasks: "all" };
-  ["projects","goals","jobs","tasks"].forEach(function(section){
+  var activeFilters = { projects: "all", goals: "all", job: "all", tasks: "all" };
+  ["projects","goals","job","tasks"].forEach(function(section){
     var wrap = document.getElementById("filters-" + section);
     wrap.addEventListener("click", function(e){
       var btn = e.target.closest(".filter-btn");
@@ -522,22 +664,26 @@
   var overlay = document.getElementById("form-overlay");
   var form = document.getElementById("entry-form");
   var formTitle = document.getElementById("form-title");
-  var currentType = null; // idea/project/goal/job/task
+  var currentType = null;
   var editingId = null;
 
   var fieldGroups = {
     idea: ["f-dateadded-wrap"],
     project: ["f-category-wrap","f-projectdates-wrap","f-status-wrap","f-complete-wrap"],
     goal: ["f-term-wrap","f-targetdate-wrap","f-status-wrap","f-complete-wrap"],
-    job: ["f-company-wrap","f-dateapplied-wrap","f-status-wrap"],
-    task: ["f-taskdue-wrap","f-linkproject-wrap","f-complete-wrap"]
+    jobtask: ["f-taskdue-wrap","f-complete-wrap"],
+    task: ["f-taskdue-wrap","f-linkproject-wrap","f-complete-wrap"],
+    saving: ["f-savingtype-wrap","f-savingdate-wrap","f-savingamount-wrap"],
+    paycheck: ["f-paycheckdate-wrap","f-paycheckamount-wrap","f-paycheckreceived-wrap"],
+    sale: ["f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"]
   };
 
   var statusOptions = {
     project: [["notstarted","Not Started"],["inprogress","In Progress"],["done","Done"]],
-    goal: [["notstarted","Not Started"],["inprogress","In Progress"],["done","Done"]],
-    job: [["applied","Applied"],["interview","Interview"],["offer","Offer"],["rejected","Rejected"]]
+    goal: [["notstarted","Not Started"],["inprogress","In Progress"],["done","Done"]]
   };
+
+  var noNameTypes = { saving: true, paycheck: true };
 
   function resetForm(){
     form.reset();
@@ -548,16 +694,18 @@
   function openForm(type, entry){
     currentType = type;
     resetForm();
-    // hide all conditional groups
-    var allWraps = ["f-category-wrap","f-term-wrap","f-company-wrap","f-dateadded-wrap",
-      "f-dateapplied-wrap","f-projectdates-wrap","f-targetdate-wrap","f-taskdue-wrap",
-      "f-linkproject-wrap","f-status-wrap","f-complete-wrap"];
+    var allWraps = ["f-category-wrap","f-term-wrap","f-dateadded-wrap","f-projectdates-wrap",
+      "f-targetdate-wrap","f-taskdue-wrap","f-linkproject-wrap","f-status-wrap","f-complete-wrap",
+      "f-savingtype-wrap","f-savingdate-wrap","f-savingamount-wrap",
+      "f-paycheckdate-wrap","f-paycheckamount-wrap","f-paycheckreceived-wrap",
+      "f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"];
     allWraps.forEach(function(id){ document.getElementById(id).style.display = "none"; });
     (fieldGroups[type] || []).forEach(function(id){ document.getElementById(id).style.display = ""; });
 
     var nameLabel = document.getElementById("f-name-label");
     var nameWrap = document.getElementById("f-name-wrap");
-    nameWrap.style.display = "";
+    nameWrap.style.display = noNameTypes[type] ? "none" : "";
+
     if(type === "idea"){
       formTitle.textContent = entry ? "Edit Idea" : "Add Idea";
       nameLabel.textContent = "Idea";
@@ -572,16 +720,23 @@
       nameLabel.textContent = "Goal";
       document.getElementById("f-name").placeholder = "e.g. Run a half marathon";
       populateStatus("goal");
-    } else if(type === "job"){
-      formTitle.textContent = entry ? "Edit Application" : "Add Application";
-      nameLabel.textContent = "Role Title";
-      document.getElementById("f-name").placeholder = "e.g. Frontend Engineer";
-      populateStatus("job");
+    } else if(type === "jobtask"){
+      formTitle.textContent = entry ? "Edit Job Task" : "Add Job Task";
+      nameLabel.textContent = "Task";
+      document.getElementById("f-name").placeholder = "e.g. Prep client presentation";
     } else if(type === "task"){
       formTitle.textContent = entry ? "Edit Task" : "Add Task";
       nameLabel.textContent = "Task";
       document.getElementById("f-name").placeholder = "e.g. Finish slide deck";
       populateProjectLink();
+    } else if(type === "saving"){
+      formTitle.textContent = entry ? "Edit Savings Entry" : "Add Savings Entry";
+    } else if(type === "paycheck"){
+      formTitle.textContent = entry ? "Edit Paycheck" : "Add Paycheck";
+    } else if(type === "sale"){
+      formTitle.textContent = entry ? "Edit Sale" : "Add Sale";
+      nameLabel.textContent = "Client / Deal Name";
+      document.getElementById("f-name").placeholder = "e.g. Acme Corp deal";
     }
 
     if(entry){
@@ -602,24 +757,52 @@
         document.getElementById("f-targetdate").value = entry.targetDate || "";
         document.getElementById("f-status").value = entry.status || "notstarted";
         document.getElementById("f-complete").checked = !!entry.complete;
-      } else if(type === "job"){
-        document.getElementById("f-company").value = entry.company || "";
-        document.getElementById("f-dateapplied").value = entry.dateApplied || "";
-        document.getElementById("f-status").value = entry.status || "applied";
+      } else if(type === "jobtask"){
+        document.getElementById("f-taskdue").value = entry.dueDate || "";
+        document.getElementById("f-complete").checked = !!entry.complete;
       } else if(type === "task"){
         document.getElementById("f-taskdue").value = entry.dueDate || "";
         document.getElementById("f-linkproject").value = entry.projectId || "";
         document.getElementById("f-complete").checked = !!entry.complete;
+      } else if(type === "saving"){
+        document.getElementById("f-savingtype").value = entry.type || "deposit";
+        document.getElementById("f-savingdate").value = entry.date || todayStr();
+        document.getElementById("f-savingamount").value = entry.amount != null ? entry.amount : "";
+      } else if(type === "paycheck"){
+        document.getElementById("f-paycheckdate").value = entry.date || todayStr();
+        document.getElementById("f-paycheckamount").value = entry.amount != null ? entry.amount : "";
+        document.getElementById("f-paycheckreceived").checked = !!entry.received;
+      } else if(type === "sale"){
+        document.getElementById("f-saledate").value = entry.date || todayStr();
+        document.getElementById("f-saleamount").value = entry.saleAmount != null ? entry.saleAmount : "";
+        document.getElementById("f-salerate").value = entry.rate != null ? entry.rate : 10;
+        document.getElementById("f-saletype").value = entry.paymentType || "full";
+        document.getElementById("f-salepaidfull").checked = !!entry.paidFull;
+        toggleSalePaidFullVisibility();
       }
     } else {
       if(type === "idea") document.getElementById("f-dateadded").value = todayStr();
-      if(type === "project") document.getElementById("f-startdate").value = todayStr();
-      if(type === "job") document.getElementById("f-dateapplied").value = todayStr();
+      if(type === "saving") document.getElementById("f-savingdate").value = todayStr();
+      if(type === "paycheck"){
+        document.getElementById("f-paycheckdate").value = todayStr();
+        document.getElementById("f-paycheckamount").value = "350.00";
+      }
+      if(type === "sale"){
+        document.getElementById("f-saledate").value = todayStr();
+        document.getElementById("f-salerate").value = 10;
+        toggleSalePaidFullVisibility();
+      }
     }
 
     overlay.classList.add("open");
-    document.getElementById("f-name").focus();
+    if(!noNameTypes[type]) document.getElementById("f-name").focus();
   }
+
+  function toggleSalePaidFullVisibility(){
+    var isFull = document.getElementById("f-saletype").value === "full";
+    document.getElementById("f-salepaidfull-wrap").style.display = isFull ? "" : "none";
+  }
+  document.getElementById("f-saletype").addEventListener("change", toggleSalePaidFullVisibility);
 
   function populateStatus(type){
     var sel = document.getElementById("f-status");
@@ -629,7 +812,7 @@
       o.value = opt[0]; o.textContent = opt[1];
       sel.appendChild(o);
     });
-    document.getElementById("f-status-label").textContent = type === "job" ? "Status" : (type === "goal" ? "Progress" : "Status");
+    document.getElementById("f-status-label").textContent = type === "goal" ? "Progress" : "Status";
   }
 
   function populateProjectLink(){
@@ -656,9 +839,13 @@
 
   form.addEventListener("submit", function(e){
     e.preventDefault();
-    var name = document.getElementById("f-name").value.trim();
     var notes = document.getElementById("f-notes").value.trim();
-    if(!name) { document.getElementById("f-name").focus(); return; }
+    var name = document.getElementById("f-name").value.trim();
+
+    if(!noNameTypes[currentType] && !name){
+      document.getElementById("f-name").focus();
+      return;
+    }
 
     if(currentType === "idea"){
       var entry = editingId ? findById("ideas", editingId) : { id: uid() };
@@ -686,14 +873,13 @@
       gEntry.complete = document.getElementById("f-complete").checked;
       gEntry.notes = notes;
       if(!editingId) data.goals.unshift(gEntry);
-    } else if(currentType === "job"){
-      var jEntry = editingId ? findById("jobs", editingId) : { id: uid() };
-      jEntry.name = name;
-      jEntry.company = document.getElementById("f-company").value.trim();
-      jEntry.dateApplied = document.getElementById("f-dateapplied").value || todayStr();
-      jEntry.status = document.getElementById("f-status").value;
-      jEntry.notes = notes;
-      if(!editingId) data.jobs.unshift(jEntry);
+    } else if(currentType === "jobtask"){
+      var jtEntry = editingId ? findById("jobTasks", editingId) : { id: uid() };
+      jtEntry.name = name;
+      jtEntry.dueDate = document.getElementById("f-taskdue").value;
+      jtEntry.complete = document.getElementById("f-complete").checked;
+      jtEntry.notes = notes;
+      if(!editingId) data.jobTasks.unshift(jtEntry);
     } else if(currentType === "task"){
       var tEntry = editingId ? findById("tasks", editingId) : { id: uid() };
       tEntry.name = name;
@@ -702,6 +888,31 @@
       tEntry.complete = document.getElementById("f-complete").checked;
       tEntry.notes = notes;
       if(!editingId) data.tasks.unshift(tEntry);
+    } else if(currentType === "saving"){
+      var sEntry = editingId ? findById("savings", editingId) : { id: uid() };
+      sEntry.type = document.getElementById("f-savingtype").value;
+      sEntry.date = document.getElementById("f-savingdate").value || todayStr();
+      sEntry.amount = parseFloat(document.getElementById("f-savingamount").value) || 0;
+      sEntry.notes = notes;
+      if(!editingId) data.savings.unshift(sEntry);
+    } else if(currentType === "paycheck"){
+      var pcEntry = editingId ? findById("paychecks", editingId) : { id: uid() };
+      pcEntry.date = document.getElementById("f-paycheckdate").value || todayStr();
+      pcEntry.amount = parseFloat(document.getElementById("f-paycheckamount").value) || 0;
+      pcEntry.received = document.getElementById("f-paycheckreceived").checked;
+      pcEntry.notes = notes;
+      if(!editingId) data.paychecks.unshift(pcEntry);
+    } else if(currentType === "sale"){
+      var slEntry = editingId ? findById("sales", editingId) : { id: uid(), installments: [] };
+      slEntry.name = name;
+      slEntry.date = document.getElementById("f-saledate").value || todayStr();
+      slEntry.saleAmount = parseFloat(document.getElementById("f-saleamount").value) || 0;
+      slEntry.rate = parseFloat(document.getElementById("f-salerate").value) || 10;
+      slEntry.paymentType = document.getElementById("f-saletype").value;
+      slEntry.paidFull = document.getElementById("f-salepaidfull").checked;
+      slEntry.notes = notes;
+      if(!slEntry.installments) slEntry.installments = [];
+      if(!editingId) data.sales.unshift(slEntry);
     }
 
     save();
@@ -716,13 +927,31 @@
     data[section] = data[section].filter(function(x){ return x.id !== id; });
   }
 
-  /* ---------- rendering ---------- */
-  function statusBadgeClass(status){
-    return "status-" + status;
+  /* ---------- commission math ---------- */
+  function saleCommissionTotal(sale){
+    return (Number(sale.saleAmount)||0) * (Number(sale.rate)||10) / 100;
   }
+  function saleCommissionEarned(sale){
+    if(sale.paymentType === "full"){
+      return sale.paidFull ? saleCommissionTotal(sale) : 0;
+    }
+    var sum = 0;
+    (sale.installments||[]).forEach(function(i){
+      sum += (Number(i.amount)||0) * (Number(sale.rate)||10) / 100;
+    });
+    return sum;
+  }
+  function salePaidAmount(sale){
+    if(sale.paymentType === "full") return sale.paidFull ? (Number(sale.saleAmount)||0) : 0;
+    var sum = 0;
+    (sale.installments||[]).forEach(function(i){ sum += Number(i.amount)||0; });
+    return sum;
+  }
+
+  /* ---------- rendering ---------- */
+  function statusBadgeClass(status){ return "status-" + status; }
   function statusLabel(status){
-    var map = { notstarted:"Not Started", inprogress:"In Progress", done:"Done",
-      applied:"Applied", interview:"Interview", offer:"Offer", rejected:"Rejected" };
+    var map = { notstarted:"Not Started", inprogress:"In Progress", done:"Done" };
     return map[status] || status;
   }
 
@@ -840,26 +1069,27 @@
     }).join("");
   }
 
-  function renderJobs(){
-    var list = document.getElementById("list-jobs");
-    var filter = activeFilters.jobs;
-    var items = data.jobs.filter(function(j){ return filter === "all" || j.status === filter; });
+  function renderJobTasks(){
+    var list = document.getElementById("list-job");
+    var filter = activeFilters.job;
+    var items = data.jobTasks.filter(function(t){
+      if(filter === "open") return !t.complete;
+      if(filter === "done") return !!t.complete;
+      return true;
+    });
     if(items.length === 0){
-      list.innerHTML = '<div class="empty-state">No applications logged yet.</div>';
+      list.innerHTML = '<div class="empty-state">No job tasks yet. Add one to get started.</div>';
       return;
     }
-    list.innerHTML = items.map(function(j){
+    list.innerHTML = items.map(function(t){
       return (
-        '<div class="card" data-id="'+j.id+'" data-section="jobs">' +
+        '<div class="card '+(t.complete?'done':'')+'" data-id="'+t.id+'" data-section="jobTasks">' +
           '<div class="card-top">' +
+            '<input type="checkbox" class="card-check" data-action="toggle" '+(t.complete?'checked':'')+'>' +
             '<div class="card-main">' +
-              '<div class="card-title-row">' +
-                '<span class="card-title">'+esc(j.name)+'</span>' +
-                (j.company ? '<span style="color:var(--text-faint);font-size:12.5px;">@ '+esc(j.company)+'</span>' : '') +
-                '<span class="badge badge-status '+statusBadgeClass(j.status)+'">'+statusLabel(j.status)+'</span>' +
-              '</div>' +
-              '<div class="card-meta"><span>Applied '+fmtDate(j.dateApplied)+'</span></div>' +
-              (j.notes ? '<div class="card-notes">'+esc(j.notes)+'</div>' : '') +
+              '<div class="card-title-row"><span class="card-title">'+esc(t.name)+'</span></div>' +
+              '<div class="card-meta"><span>Due '+fmtDate(t.dueDate)+'</span></div>' +
+              (t.notes ? '<div class="card-notes">'+esc(t.notes)+'</div>' : '') +
             '</div>' +
             '<div class="card-actions">' +
               '<button class="icon-btn" data-action="edit">Edit</button>' +
@@ -907,20 +1137,175 @@
     }).join("");
   }
 
+  function renderSavings(){
+    var list = document.getElementById("list-savings");
+    var items = data.savings;
+    var balance = 0;
+    items.forEach(function(s){
+      balance += s.type === "withdraw" ? -(Number(s.amount)||0) : (Number(s.amount)||0);
+    });
+    document.getElementById("savings-balance").textContent = fmtEGP(balance);
+
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No savings entries yet.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(s){
+      var title = (s.type === "withdraw" ? "Withdrawal" : "Deposit") + " — " + fmtEGP(s.amount);
+      return (
+        '<div class="card" data-id="'+s.id+'" data-section="savings">' +
+          '<div class="card-top">' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">'+esc(title)+'</span>' +
+                '<span class="badge badge-'+s.type+'">'+(s.type === "withdraw" ? "Withdraw" : "Deposit")+'</span>' +
+              '</div>' +
+              '<div class="card-meta"><span>'+fmtDate(s.date)+'</span></div>' +
+              (s.notes ? '<div class="card-notes">'+esc(s.notes)+'</div>' : '') +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderPaychecks(){
+    var list = document.getElementById("list-paychecks");
+    var items = data.paychecks;
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No paychecks logged yet.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(pc){
+      return (
+        '<div class="card '+(pc.received?'done':'')+'" data-id="'+pc.id+'" data-section="paychecks">' +
+          '<div class="card-top">' +
+            '<input type="checkbox" class="card-check" data-action="toggle" '+(pc.received?'checked':'')+'>' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">Paycheck — '+fmtUSD(pc.amount)+'</span>' +
+                '<span class="badge badge-status '+(pc.received?'status-done':'status-notstarted')+'">'+(pc.received?'Received':'Pending')+'</span>' +
+              '</div>' +
+              '<div class="card-meta"><span>Pay Date '+fmtDate(pc.date)+'</span></div>' +
+              (pc.notes ? '<div class="card-notes">'+esc(pc.notes)+'</div>' : '') +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderSales(){
+    var list = document.getElementById("list-sales");
+    var items = data.sales;
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-state">No sales logged yet.</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(sl){
+      var total = saleCommissionTotal(sl);
+      var earned = saleCommissionEarned(sl);
+      var remaining = total - earned;
+      var installmentsHtml = "";
+      if(sl.paymentType === "plan"){
+        var rows = (sl.installments||[]).map(function(i){
+          var comm = (Number(i.amount)||0) * (Number(sl.rate)||10) / 100;
+          return '<div class="grade-row" data-inst-id="'+i.id+'">' +
+            '<span class="g-name">'+fmtDate(i.date)+' — '+fmtUSD(i.amount)+'</span>' +
+            '<span><span class="g-score">+'+fmtUSD(comm)+'</span> ' +
+            '<button class="icon-btn" data-action="delete-installment" data-inst-id="'+i.id+'">✕</button></span>' +
+            '</div>';
+        }).join("");
+        installmentsHtml =
+          '<div class="grades-block">' +
+            '<div class="grades-header"><span>Installments</span></div>' +
+            rows +
+            '<div class="grade-add-row">' +
+              '<input type="date" class="inst-date-input" value="'+todayStr()+'" style="max-width:150px">' +
+              '<input type="number" step="0.01" min="0" placeholder="Amount paid (USD)" class="inst-amount-input">' +
+              '<button class="ghost" data-action="add-installment" style="padding:6px 12px;font-size:12px;">Add</button>' +
+            '</div>' +
+            '<div class="commission-summary">' +
+              '<div><span>Sale Amount</span><b>'+fmtUSD(sl.saleAmount)+'</b></div>' +
+              '<div><span>Paid So Far</span><b>'+fmtUSD(salePaidAmount(sl))+'</b></div>' +
+              '<div><span>Commission Earned</span><b>'+fmtUSD(earned)+'</b></div>' +
+              '<div><span>Commission Remaining</span><b>'+fmtUSD(remaining)+'</b></div>' +
+            '</div>' +
+          '</div>';
+      } else {
+        installmentsHtml =
+          '<div class="commission-summary">' +
+            '<div><span>Sale Amount</span><b>'+fmtUSD(sl.saleAmount)+'</b></div>' +
+            '<div><span>Commission ('+ (sl.rate||10) +'%)</span><b>'+fmtUSD(total)+'</b></div>' +
+            '<div><span>Status</span><b>'+(sl.paidFull ? "Received" : "Pending")+'</b></div>' +
+          '</div>';
+      }
+      return (
+        '<div class="card" data-id="'+sl.id+'" data-section="sales">' +
+          '<div class="card-top">' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">'+esc(sl.name)+'</span>' +
+                '<span class="badge badge-'+(sl.paymentType==='plan'?'plan':'full')+'">'+(sl.paymentType==='plan'?'Payment Plan':'Paid in Full')+'</span>' +
+              '</div>' +
+              '<div class="card-meta"><span>Sale Date '+fmtDate(sl.date)+'</span></div>' +
+              (sl.notes ? '<div class="card-notes">'+esc(sl.notes)+'</div>' : '') +
+              installmentsHtml +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="icon-btn" data-action="edit">Edit</button>' +
+              '<button class="icon-btn" data-action="delete">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderPayrollStats(){
+    var earnedTotal = 0, pendingTotal = 0;
+    data.sales.forEach(function(sl){
+      earnedTotal += saleCommissionEarned(sl);
+      pendingTotal += (saleCommissionTotal(sl) - saleCommissionEarned(sl));
+    });
+    var npd = nextPayDate();
+    var wrap = document.getElementById("payroll-stats");
+    wrap.innerHTML =
+      '<div class="stat-tile"><div class="stat-label">Base Salary</div><div class="stat-value">$700/mo</div></div>' +
+      '<div class="stat-tile"><div class="stat-label">Next Pay Date</div><div class="stat-value accent">'+fmtDateObj(npd)+'</div></div>' +
+      '<div class="stat-tile"><div class="stat-label">Commission Earned</div><div class="stat-value green">'+fmtUSD(earnedTotal)+'</div></div>' +
+      '<div class="stat-tile"><div class="stat-label">Commission Pending</div><div class="stat-value yellow">'+fmtUSD(pendingTotal)+'</div></div>';
+  }
+
   function renderAll(){
     renderIdeas();
     renderProjects();
     renderGoals();
-    renderJobs();
+    renderJobTasks();
     renderTasks();
+    renderSavings();
+    renderPaychecks();
+    renderSales();
+    renderPayrollStats();
   }
 
   /* ---------- event delegation for card actions ---------- */
   document.getElementById("list-ideas").addEventListener("click", function(e){ handleCardClick(e, "ideas", "idea"); });
   document.getElementById("list-projects").addEventListener("click", function(e){ handleCardClick(e, "projects", "project"); });
   document.getElementById("list-goals").addEventListener("click", function(e){ handleCardClick(e, "goals", "goal"); });
-  document.getElementById("list-jobs").addEventListener("click", function(e){ handleCardClick(e, "jobs", "job"); });
+  document.getElementById("list-job").addEventListener("click", function(e){ handleCardClick(e, "jobTasks", "jobtask"); });
   document.getElementById("list-tasks").addEventListener("click", function(e){ handleCardClick(e, "tasks", "task"); });
+  document.getElementById("list-savings").addEventListener("click", function(e){ handleCardClick(e, "savings", "saving"); });
+  document.getElementById("list-paychecks").addEventListener("click", function(e){ handleCardClick(e, "paychecks", "paycheck"); });
+  document.getElementById("list-sales").addEventListener("click", function(e){ handleCardClick(e, "sales", "sale"); });
 
   document.getElementById("list-projects").addEventListener("change", function(e){
     if(e.target.classList.contains("card-check")){
@@ -942,6 +1327,15 @@
       renderGoals();
     }
   });
+  document.getElementById("list-job").addEventListener("change", function(e){
+    if(e.target.classList.contains("card-check")){
+      var card = e.target.closest(".card");
+      var entry = findById("jobTasks", card.dataset.id);
+      entry.complete = e.target.checked;
+      save();
+      renderJobTasks();
+    }
+  });
   document.getElementById("list-tasks").addEventListener("change", function(e){
     if(e.target.classList.contains("card-check")){
       var card = e.target.closest(".card");
@@ -949,6 +1343,15 @@
       entry.complete = e.target.checked;
       save();
       renderTasks();
+    }
+  });
+  document.getElementById("list-paychecks").addEventListener("change", function(e){
+    if(e.target.classList.contains("card-check")){
+      var card = e.target.closest(".card");
+      var entry = findById("paychecks", card.dataset.id);
+      entry.received = e.target.checked;
+      save();
+      renderPaychecks();
     }
   });
 
@@ -983,15 +1386,53 @@
       proj2.grades = (proj2.grades || []).filter(function(g){ return g.id !== gid; });
       save();
       renderProjects();
+    } else if(action === "add-installment"){
+      var dateInput = card.querySelector(".inst-date-input");
+      var amountInput = card.querySelector(".inst-amount-input");
+      var idate = dateInput.value || todayStr();
+      var iamount = parseFloat(amountInput.value);
+      if(!iamount || iamount <= 0) return;
+      var sale = findById("sales", id);
+      if(!sale.installments) sale.installments = [];
+      sale.installments.push({ id: uid(), date: idate, amount: iamount });
+      save();
+      renderSales();
+      renderPayrollStats();
+    } else if(action === "delete-installment"){
+      var iid = e.target.dataset.instId;
+      var sale2 = findById("sales", id);
+      sale2.installments = (sale2.installments || []).filter(function(i){ return i.id !== iid; });
+      save();
+      renderSales();
+      renderPayrollStats();
     }
   }
 
-  // allow Enter key inside grade inputs to trigger add
+  document.getElementById("list-sales").addEventListener("change", function(e){
+    if(e.target.classList.contains("card-check")){
+      var card = e.target.closest(".card");
+      var entry = findById("sales", card.dataset.id);
+      entry.paidFull = e.target.checked;
+      save();
+      renderSales();
+      renderPayrollStats();
+    }
+  });
+
+  // allow Enter key inside grade/installment inputs to trigger add
   document.getElementById("list-projects").addEventListener("keydown", function(e){
     if(e.key === "Enter" && (e.target.classList.contains("grade-name-input") || e.target.classList.contains("grade-score-input"))){
       e.preventDefault();
       var card = e.target.closest(".card");
       var addBtn = card.querySelector('[data-action="add-grade"]');
+      if(addBtn) addBtn.click();
+    }
+  });
+  document.getElementById("list-sales").addEventListener("keydown", function(e){
+    if(e.key === "Enter" && e.target.classList.contains("inst-amount-input")){
+      e.preventDefault();
+      var card = e.target.closest(".card");
+      var addBtn = card.querySelector('[data-action="add-installment"]');
       if(addBtn) addBtn.click();
     }
   });
