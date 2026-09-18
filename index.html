@@ -417,7 +417,10 @@
       <div class="section-heading">Commissions (10% per sale)</div>
       <div class="panel-toolbar">
         <div style="font-size:12.5px;color:var(--text-faint);">Payment-plan sales split commission per installment</div>
-        <button class="primary" data-open-form="sale">+ Add Sale</button>
+        <div style="display:flex;gap:8px;">
+          <button class="ghost" id="btn-report">Report</button>
+          <button class="primary" data-open-form="sale">+ Add Sale</button>
+        </div>
       </div>
       <div class="card-list" id="list-sales"></div>
     </section>
@@ -565,6 +568,10 @@
       </div>
 
       <!-- sale / commission -->
+      <div class="field" id="f-saleemail-wrap" style="display:none">
+        <label>Client Email</label>
+        <input type="text" id="f-saleemail" placeholder="name@example.com">
+      </div>
       <div class="field" id="f-saledate-wrap" style="display:none">
         <label>Sale Date</label>
         <input type="date" id="f-saledate">
@@ -716,7 +723,7 @@
     task: ["f-taskdue-wrap","f-linkproject-wrap","f-complete-wrap"],
     saving: ["f-savingtype-wrap","f-savingdate-wrap","f-savingamount-wrap"],
     paycheck: ["f-paycheckdate-wrap","f-paycheckamount-wrap","f-paycheckreceived-wrap"],
-    sale: ["f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"]
+    sale: ["f-saleemail-wrap","f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"]
   };
 
   var statusOptions = {
@@ -739,7 +746,7 @@
       "f-targetdate-wrap","f-taskdue-wrap","f-linkproject-wrap","f-status-wrap","f-complete-wrap",
       "f-savingtype-wrap","f-savingdate-wrap","f-savingamount-wrap",
       "f-paycheckdate-wrap","f-paycheckamount-wrap","f-paycheckreceived-wrap",
-      "f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"];
+      "f-saleemail-wrap","f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"];
     allWraps.forEach(function(id){ document.getElementById(id).style.display = "none"; });
     (fieldGroups[type] || []).forEach(function(id){ document.getElementById(id).style.display = ""; });
 
@@ -814,6 +821,7 @@
         document.getElementById("f-paycheckamount").value = entry.amount != null ? entry.amount : "";
         document.getElementById("f-paycheckreceived").checked = !!entry.received;
       } else if(type === "sale"){
+        document.getElementById("f-saleemail").value = saleEmail(entry);
         document.getElementById("f-saledate").value = entry.date || todayStr();
         document.getElementById("f-saleamount").value = entry.saleAmount != null ? entry.saleAmount : "";
         document.getElementById("f-salerate").value = entry.rate != null ? entry.rate : 10;
@@ -946,7 +954,8 @@
     } else if(currentType === "sale"){
       var slEntry = editingId ? findById("sales", editingId) : { id: uid(), installments: [] };
       slEntry.name = name;
-      slEntry.date = document.getElementById("f-saledate").value || todayStr();
+      slEntry.email = document.getElementById("f-saleemail").value.trim();
+      slEntry.date =document.getElementById("f-saledate").value || todayStr();
       slEntry.saleAmount = parseFloat(document.getElementById("f-saleamount").value) || 0;
       slEntry.rate = parseFloat(document.getElementById("f-salerate").value) || 10;
       slEntry.paymentType = document.getElementById("f-saletype").value;
@@ -987,6 +996,134 @@
     var sum = 0;
     (sale.installments||[]).forEach(function(i){ sum += Number(i.amount)||0; });
     return sum;
+  }
+
+  function saleEmail(sl){
+    if(sl.email) return sl.email;
+    var m = (sl.notes || "").match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g);
+    return m ? m.join(", ") : "";
+  }
+
+  /* ---------- PDF report ---------- */
+  function loadScript(src){
+    return new Promise(function(resolve, reject){
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function(){ reject(new Error("Failed to load " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function loadPdfLibs(){
+    if(window.jspdf && window.jspdf.jsPDF && typeof window.jspdf.jsPDF.API.autoTable === "function"){
+      return Promise.resolve();
+    }
+    return loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js")
+      .then(function(){ return loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"); });
+  }
+
+  function pdfDate(d){
+    if(!d) return "-";
+    var p = d.split("-");
+    var dt = new Date(p[0], p[1]-1, p[2]);
+    return dt.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
+  }
+  function pdfMoney(n){ return "$" + (Number(n)||0).toFixed(2); }
+
+  function buildReportRows(){
+    return data.sales.map(function(sl){
+      var total = Number(sl.saleAmount) || 0;
+      var paid = salePaidAmount(sl);
+      var payments;
+      if(sl.paymentType === "full"){
+        payments = sl.paidFull ? pdfDate(sl.date) + ": " + pdfMoney(total) : "None yet";
+      } else {
+        var inst = (sl.installments || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+        payments = inst.length ? inst.map(function(i){ return pdfDate(i.date) + ": " + pdfMoney(i.amount); }).join("\n") : "None yet";
+      }
+      return {
+        name: sl.name || "",
+        email: saleEmail(sl) || "-",
+        total: total,
+        payments: payments,
+        paid: paid,
+        pendingPayments: Math.max(0, total - paid),
+        commTaken: saleCommissionEarned(sl),
+        commPending: Math.max(0, saleCommissionTotal(sl) - saleCommissionEarned(sl))
+      };
+    });
+  }
+
+  function generateReport(){
+    if(data.sales.length === 0){
+      alert("No sales to report yet.");
+      return;
+    }
+    var btn = document.getElementById("btn-report");
+    btn.disabled = true;
+    btn.textContent = "Building...";
+    loadPdfLibs().then(function(){
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "letter" });
+      var rows = buildReportRows();
+      var sum = function(key){ return rows.reduce(function(a, r){ return a + r[key]; }, 0); };
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("Commission Report", 40, 42);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(110);
+      doc.text("Generated " + pdfDate(todayStr()) + "  |  " + rows.length + " sales  |  Commission rate per sale as entered (default 10%)", 40, 58);
+      doc.setTextColor(0);
+
+      var body = rows.map(function(r){
+        return [r.name, r.email, pdfMoney(r.total), r.payments, pdfMoney(r.paid), pdfMoney(r.pendingPayments), pdfMoney(r.commTaken), pdfMoney(r.commPending)];
+      });
+      body.push([
+        { content: "TOTAL", styles: { fontStyle: "bold" } }, "",
+        { content: pdfMoney(sum("total")), styles: { fontStyle: "bold" } }, "",
+        { content: pdfMoney(sum("paid")), styles: { fontStyle: "bold" } },
+        { content: pdfMoney(sum("pendingPayments")), styles: { fontStyle: "bold" } },
+        { content: pdfMoney(sum("commTaken")), styles: { fontStyle: "bold" } },
+        { content: pdfMoney(sum("commPending")), styles: { fontStyle: "bold" } }
+      ]);
+
+      doc.autoTable({
+        startY: 72,
+        head: [["Client", "Email", "Sale Total", "Payments Received", "Paid", "Payments Pending", "Commission Taken", "Commission Pending"]],
+        body: body,
+        theme: "grid",
+        styles: { fontSize: 8, cellPadding: 4, valign: "middle", lineColor: [210, 210, 215] },
+        headStyles: { fillColor: [60, 60, 90], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [246, 246, 250] },
+        columnStyles: {
+          0: { cellWidth: 95 },
+          1: { cellWidth: 140 },
+          2: { halign: "right", cellWidth: 55 },
+          3: { cellWidth: 115 },
+          4: { halign: "right", cellWidth: 55 },
+          5: { halign: "right", cellWidth: 62 },
+          6: { halign: "right", cellWidth: 62 },
+          7: { halign: "right", cellWidth: 62 }
+        },
+        margin: { left: 40, right: 40, bottom: 36 },
+        didDrawPage: function(){
+          doc.setFontSize(8);
+          doc.setTextColor(130);
+          doc.text("Page " + doc.internal.getNumberOfPages(), doc.internal.pageSize.getWidth() - 40, doc.internal.pageSize.getHeight() - 18, { align: "right" });
+          doc.setTextColor(0);
+        }
+      });
+
+      doc.save("Commission-Report-" + todayStr() + ".pdf");
+    }).catch(function(){
+      alert("Couldn't load the PDF library - check your internet connection and try again.");
+    }).then(function(){
+      btn.disabled = false;
+      btn.textContent = "Report";
+    });
   }
 
   /* ---------- rendering ---------- */
@@ -1297,7 +1434,7 @@
                 '<span class="card-title">'+esc(sl.name)+'</span>' +
                 '<span class="badge badge-'+(sl.paymentType==='plan'?'plan':'full')+'">'+(sl.paymentType==='plan'?'Payment Plan':'Paid in Full')+'</span>' +
               '</div>' +
-              '<div class="card-meta"><span>Sale Date '+fmtDate(sl.date)+'</span></div>' +
+              '<div class="card-meta"><span>Sale Date '+fmtDate(sl.date)+'</span>'+(saleEmail(sl) ? '<span>'+esc(saleEmail(sl))+'</span>' : '')+'</div>' +
               (sl.notes ? '<div class="card-notes">'+esc(sl.notes)+'</div>' : '') +
               installmentsHtml +
             '</div>' +
@@ -1583,6 +1720,7 @@
     alert("Imported " + count + " entr" + (count === 1 ? "y" : "ies") + ".");
   }
 
+  document.getElementById("btn-report").addEventListener("click", generateReport);
   document.getElementById("btn-export").addEventListener("click", exportData);
   document.getElementById("btn-import").addEventListener("click", function(){
     document.getElementById("import-file-input").click();
