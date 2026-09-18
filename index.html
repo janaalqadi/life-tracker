@@ -1041,12 +1041,12 @@
       if(sl.paymentType === "full"){
         if(sl.paidFull){
           var amt = Number(sl.saleAmount)||0;
-          events.push({ sale: sl, date: sl.date, payment: amt, commission: amt * rate });
+          events.push({ sale: sl, date: sl.date, payment: amt, commission: amt * rate, paid: !!sl.payrollPaid });
         }
       } else {
         (sl.installments || []).forEach(function(inst){
           var a = Number(inst.amount)||0;
-          events.push({ sale: sl, date: inst.date, payment: a, commission: a * rate });
+          events.push({ sale: sl, date: inst.date, payment: a, commission: a * rate, paid: !!inst.payrollPaid });
         });
       }
     });
@@ -1186,12 +1186,13 @@
       y += 24;
 
       table({
-        head: [["Payments collected", "Commission taken", "Payments pending", "Commission pending"]],
+        head: [["Payments collected", "Commission taken", "Paid in payroll", "Payments pending", "Commission pending"]],
         body: [[
           pdfMoney(sumOf(collected, "payment")), pdfMoney(sumOf(collected, "commission")),
+          pdfMoney(collected.filter(function(ev){ return ev.paid; }).reduce(function(a, ev){ return a + ev.commission; }, 0)),
           pdfMoney(sumOf(due, "payment")), pdfMoney(sumOf(due, "commission"))
         ]],
-        columnStyles: { 0: { halign: "center" }, 1: { halign: "center" }, 2: { halign: "center" }, 3: { halign: "center" } }
+        columnStyles: { 0: { halign: "center" }, 1: { halign: "center" }, 2: { halign: "center" }, 3: { halign: "center" }, 4: { halign: "center" } }
       });
 
       heading("Collected this period");
@@ -1199,17 +1200,17 @@
         note("No payments collected in this period yet.");
       } else {
         var cbody = collected.map(function(ev){
-          return [ev.sale.name || "", saleEmail(ev.sale) || "-", pdfDate(ev.date), pdfMoney(ev.payment), pdfMoney(ev.commission)];
+          return [ev.sale.name || "", saleEmail(ev.sale) || "-", pdfDate(ev.date), pdfMoney(ev.payment), pdfMoney(ev.commission), ev.paid ? "Yes" : "No"];
         });
         cbody.push([
           { content: "Subtotal", styles: bold }, "", "",
           { content: pdfMoney(sumOf(collected, "payment")), styles: bold },
-          { content: pdfMoney(sumOf(collected, "commission")), styles: bold }
+          { content: pdfMoney(sumOf(collected, "commission")), styles: bold }, ""
         ]);
         table({
-          head: [["Client", "Email", "Payment date", "Payment", "Commission taken"]],
+          head: [["Client", "Email", "Payment date", "Payment", "Commission taken", "In payroll"]],
           body: cbody,
-          columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 175 }, 2: { cellWidth: 75 }, 3: { halign: "right", cellWidth: 72 }, 4: { halign: "right", cellWidth: 105 } }
+          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 150 }, 2: { cellWidth: 70 }, 3: { halign: "right", cellWidth: 65 }, 4: { halign: "right", cellWidth: 82 }, 5: { halign: "center", cellWidth: 65 } }
         });
       }
 
@@ -1520,7 +1521,9 @@
           var comm = (Number(i.amount)||0) * (Number(sl.rate)||10) / 100;
           return '<div class="grade-row" data-inst-id="'+i.id+'">' +
             '<span class="g-name">'+fmtDate(i.date)+' — '+fmtUSD(i.amount)+'</span>' +
-            '<span><span class="g-score">+'+fmtUSD(comm)+'</span> ' +
+            '<span><label style="font-size:11px;color:var(--text-faint);margin-right:10px;cursor:pointer;" title="Tick when this commission was included in payroll">' +
+              '<input type="checkbox" class="comm-check" data-inst-id="'+i.id+'" '+(i.payrollPaid?'checked ':'')+'style="width:15px;height:15px;accent-color:var(--accent);vertical-align:middle;margin-right:4px;cursor:pointer;">paid</label>' +
+            '<span class="g-score">+'+fmtUSD(comm)+'</span> ' +
             '<button class="icon-btn" data-action="delete-installment" data-inst-id="'+i.id+'">✕</button></span>' +
             '</div>';
         }).join("");
@@ -1562,6 +1565,8 @@
             '<div><span>Sale Amount</span><b>'+fmtUSD(sl.saleAmount)+'</b></div>' +
             '<div><span>Commission ('+ (sl.rate||10) +'%)</span><b>'+fmtUSD(total)+'</b></div>' +
             '<div><span>Status</span><b>'+(sl.paidFull ? "Received" : "Pending")+'</b></div>' +
+            (sl.paidFull ? '<div><span>In payroll</span><label style="cursor:pointer;font-size:13px;" title="Tick when this commission was included in payroll">' +
+              '<input type="checkbox" class="comm-check" '+(sl.payrollPaid?'checked ':'')+'style="width:15px;height:15px;accent-color:var(--accent);vertical-align:middle;margin-right:5px;cursor:pointer;">paid</label></div>' : '') +
           '</div>';
       }
       return (
@@ -1598,8 +1603,9 @@
     var buckets = {};
     events.forEach(function(ev){
       var p = payPeriodForDate(ev.date);
-      if(!buckets[p.key]) buckets[p.key] = { label: p.label, payDate: p.payDate, total: 0 };
+      if(!buckets[p.key]) buckets[p.key] = { label: p.label, payDate: p.payDate, total: 0, paid: 0 };
       buckets[p.key].total += ev.commission;
+      if(ev.paid) buckets[p.key].paid += ev.commission;
     });
 
     var today = new Date();
@@ -1608,16 +1614,19 @@
     rows.sort(function(a,b){ return b.payDate - a.payDate; });
 
     list.innerHTML = rows.map(function(r){
-      var paidOut = r.payDate <= today;
+      var allPaid = r.total > 0 && r.paid >= r.total - 0.005;
+      var dueNow = r.payDate <= today;
+      var badgeClass = allPaid ? "status-done" : "status-inprogress";
+      var badgeText = allPaid ? "Paid" : (dueNow ? "Awaiting payroll" : "Next Payout");
       return (
         '<div class="card">' +
           '<div class="card-top">' +
             '<div class="card-main">' +
               '<div class="card-title-row">' +
                 '<span class="card-title">'+esc(r.label)+'</span>' +
-                '<span class="badge badge-status '+(paidOut ? "status-done" : "status-inprogress")+'">'+(paidOut ? "Paid Out" : "Next Payout")+'</span>' +
+                '<span class="badge badge-status '+badgeClass+'">'+badgeText+'</span>' +
               '</div>' +
-              '<div class="card-meta"><span>Payout date '+fmtDateObj(r.payDate)+'</span></div>' +
+              '<div class="card-meta"><span>Payout date '+fmtDateObj(r.payDate)+'</span><span>Ticked as paid '+fmtUSD(r.paid)+' of '+fmtUSD(r.total)+'</span></div>' +
             '</div>' +
             '<div class="card-actions" style="align-items:center;"><span class="stat-value green" style="font-size:16px;">'+fmtUSD(r.total)+'</span></div>' +
           '</div>' +
@@ -1799,6 +1808,20 @@
   }
 
   document.getElementById("list-sales").addEventListener("change", function(e){
+    if(e.target.classList.contains("comm-check")){
+      var ccard = e.target.closest(".card");
+      var csale = findById("sales", ccard.dataset.id);
+      var instId = e.target.dataset.instId;
+      if(instId){
+        var inst = (csale.installments || []).filter(function(i){ return i.id === instId; })[0];
+        if(inst) inst.payrollPaid = e.target.checked;
+      } else {
+        csale.payrollPaid = e.target.checked;
+      }
+      save();
+      renderPayPeriods();
+      return;
+    }
     if(e.target.classList.contains("card-check")){
       var card = e.target.closest(".card");
       var entry = findById("sales", card.dataset.id);
