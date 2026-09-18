@@ -403,6 +403,10 @@
     <section class="tab-panel" id="tab-payroll">
       <div class="stats-row" id="payroll-stats"></div>
 
+      <div class="section-heading">Commission by Pay Period</div>
+      <div style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">Each sale's commission is credited to whichever half of the month it was actually collected in — 1st&ndash;15th (paid the 16th) or 16th&ndash;end (paid the 1st)</div>
+      <div class="card-list" id="list-pay-periods"></div>
+
       <div class="section-heading">Paychecks</div>
       <div class="panel-toolbar">
         <div style="font-size:12.5px;color:var(--text-faint);">Base salary $700/mo &middot; paid on the 1st &amp; 16th</div>
@@ -634,6 +638,26 @@
       if(cands[i] >= now) return cands[i];
     }
     return cands[cands.length-1];
+  }
+  function payPeriodForDate(dateStr){
+    var parts = dateStr.split("-");
+    var y = +parts[0], m = +parts[1], day = +parts[2];
+    var half, start, end, payDate;
+    if(day <= 15){
+      half = "A";
+      start = new Date(y, m-1, 1);
+      end = new Date(y, m-1, 15);
+      payDate = new Date(y, m-1, 16);
+    } else {
+      half = "B";
+      start = new Date(y, m-1, 16);
+      end = new Date(y, m, 0);
+      payDate = new Date(y, m, 1);
+    }
+    var key = y + "-" + (m < 10 ? "0"+m : m) + "-" + half;
+    var monthLabel = start.toLocaleDateString(undefined, {month:"short"});
+    var label = monthLabel + " " + start.getDate() + "–" + end.getDate() + ", " + y;
+    return { key: key, start: start, end: end, payDate: payDate, label: label };
   }
 
   var defaultData = { ideas: [], projects: [], goals: [], jobTasks: [], tasks: [], savings: [], paychecks: [], sales: [] };
@@ -1287,6 +1311,57 @@
     }).join("");
   }
 
+  function renderPayPeriods(){
+    var list = document.getElementById("list-pay-periods");
+    var events = [];
+    data.sales.forEach(function(sl){
+      if(sl.paymentType === "full"){
+        if(sl.paidFull){
+          events.push({ date: sl.date, amount: saleCommissionTotal(sl) });
+        }
+      } else {
+        (sl.installments || []).forEach(function(inst){
+          events.push({ date: inst.date, amount: (Number(inst.amount)||0) * (Number(sl.rate)||10) / 100 });
+        });
+      }
+    });
+
+    if(events.length === 0){
+      list.innerHTML = '<div class="empty-state">No commission collected yet — this fills in once a sale is marked paid or an installment is added.</div>';
+      return;
+    }
+
+    var buckets = {};
+    events.forEach(function(ev){
+      var p = payPeriodForDate(ev.date);
+      if(!buckets[p.key]) buckets[p.key] = { label: p.label, payDate: p.payDate, total: 0 };
+      buckets[p.key].total += ev.amount;
+    });
+
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    var rows = Object.keys(buckets).map(function(k){ return buckets[k]; });
+    rows.sort(function(a,b){ return b.payDate - a.payDate; });
+
+    list.innerHTML = rows.map(function(r){
+      var paidOut = r.payDate <= today;
+      return (
+        '<div class="card">' +
+          '<div class="card-top">' +
+            '<div class="card-main">' +
+              '<div class="card-title-row">' +
+                '<span class="card-title">'+esc(r.label)+'</span>' +
+                '<span class="badge badge-status '+(paidOut ? "status-done" : "status-inprogress")+'">'+(paidOut ? "Paid Out" : "Next Payout")+'</span>' +
+              '</div>' +
+              '<div class="card-meta"><span>Payout date '+fmtDateObj(r.payDate)+'</span></div>' +
+            '</div>' +
+            '<div class="card-actions" style="align-items:center;"><span class="stat-value green" style="font-size:16px;">'+fmtUSD(r.total)+'</span></div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
   function renderPayrollStats(){
     var earnedTotal = 0, pendingTotal = 0;
     data.sales.forEach(function(sl){
@@ -1312,6 +1387,7 @@
     renderPaychecks();
     renderSales();
     renderPayrollStats();
+    renderPayPeriods();
   }
 
   /* ---------- event delegation for card actions ---------- */
@@ -1415,6 +1491,7 @@
       save();
       renderSales();
       renderPayrollStats();
+      renderPayPeriods();
     } else if(action === "delete-installment"){
       var iid = e.target.dataset.instId;
       var sale2 = findById("sales", id);
@@ -1422,6 +1499,7 @@
       save();
       renderSales();
       renderPayrollStats();
+      renderPayPeriods();
     }
   }
 
@@ -1433,6 +1511,7 @@
       save();
       renderSales();
       renderPayrollStats();
+      renderPayPeriods();
     }
   });
 
