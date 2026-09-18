@@ -964,6 +964,7 @@
       slEntry.paidFull = document.getElementById("f-salepaidfull").checked;
       slEntry.notes = notes;
       if(!slEntry.installments) slEntry.installments = [];
+      if(!slEntry.schedule) slEntry.schedule = [];
       if(!editingId) data.sales.unshift(slEntry);
     }
 
@@ -1058,13 +1059,21 @@
 
   var MONTH_NUM = { Jan:1, Feb:2, Mar:3, Apr:4, May:5, Jun:6, Jul:7, Aug:8, Sep:9, Oct:10, Nov:11, Dec:12 };
 
-  // Upcoming installments live in a sale's notes as "$X on Mon D, YYYY (upcoming)".
-  // Anything the user has since logged as a real installment is matched off so it stops showing as pending.
+  function byDateAsc(a, b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); }
+
+  // Expected (not yet received) payments for a sale, from its own schedule list in the app.
   function scheduledPayments(sl){
-    var total = Number(sl.saleAmount) || 0;
     if(sl.paymentType === "full"){
-      return sl.paidFull ? [] : [{ date: sl.date, amount: total }];
+      return sl.paidFull ? [] : [{ date: sl.date, amount: Number(sl.saleAmount) || 0 }];
     }
+    return (sl.schedule || []).map(function(s){
+      return { date: s.date, amount: Number(s.amount) || 0 };
+    }).sort(byDateAsc);
+  }
+
+  // One-time conversion: sales imported earlier carried their upcoming payments as text in the
+  // notes ("$X on Mon D, YYYY (upcoming)"). Turn that into a real schedule list.
+  function parseNotesSchedule(sl){
     var upcoming = [], notedReceived = [], m;
     var re = /\$(\d+(?:\.\d+)?) on ([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) \((received|upcoming)\)/g;
     while((m = re.exec(sl.notes || "")) !== null){
@@ -1087,6 +1096,19 @@
     };
     notedReceived.forEach(function(a){ takeMatch(actual, a); });
     return upcoming.filter(function(s){ return !takeMatch(actual, s.amount); });
+  }
+
+  function migrateSchedules(){
+    var changed = false;
+    data.sales.forEach(function(sl){
+      if(sl.paymentType === "plan" && !Array.isArray(sl.schedule)){
+        sl.schedule = parseNotesSchedule(sl).map(function(s){
+          return { id: uid(), date: s.date, amount: s.amount };
+        });
+        changed = true;
+      }
+    });
+    if(changed) save();
   }
 
   function generatePeriodReport(half){
@@ -1502,14 +1524,30 @@
             '<button class="icon-btn" data-action="delete-installment" data-inst-id="'+i.id+'">✕</button></span>' +
             '</div>';
         }).join("");
+        var schedRows = scheduledPayments(sl).map(function(s){
+          var sid = (sl.schedule || []).filter(function(x){ return x.date === s.date && Math.abs((Number(x.amount)||0) - s.amount) < 0.001; })[0];
+          sid = sid ? sid.id : "";
+          return '<div class="grade-row">' +
+            '<span class="g-name">'+fmtDate(s.date)+' — '+fmtUSD(s.amount)+'</span>' +
+            '<span><button class="icon-btn" style="color:var(--green)" data-action="receive-scheduled" data-sched-id="'+sid+'">Received</button>' +
+            '<button class="icon-btn" data-action="delete-scheduled" data-sched-id="'+sid+'">✕</button></span>' +
+            '</div>';
+        }).join("");
         installmentsHtml =
           '<div class="grades-block">' +
-            '<div class="grades-header"><span>Installments</span></div>' +
+            '<div class="grades-header"><span>Installments received</span></div>' +
             rows +
             '<div class="grade-add-row">' +
               '<input type="date" class="inst-date-input" value="'+todayStr()+'" style="max-width:150px">' +
               '<input type="number" step="0.01" min="0" placeholder="Amount paid (USD)" class="inst-amount-input">' +
               '<button class="ghost" data-action="add-installment" style="padding:6px 12px;font-size:12px;">Add</button>' +
+            '</div>' +
+            '<div class="grades-header" style="margin-top:14px"><span>Upcoming payments</span></div>' +
+            schedRows +
+            '<div class="grade-add-row">' +
+              '<input type="date" class="sched-date-input" value="'+todayStr()+'" style="max-width:150px">' +
+              '<input type="number" step="0.01" min="0" placeholder="Amount due (USD)" class="sched-amount-input">' +
+              '<button class="ghost" data-action="add-scheduled" style="padding:6px 12px;font-size:12px;">Add</button>' +
             '</div>' +
             '<div class="commission-summary">' +
               '<div><span>Sale Amount</span><b>'+fmtUSD(sl.saleAmount)+'</b></div>' +
@@ -1714,6 +1752,37 @@
       var sale = findById("sales", id);
       if(!sale.installments) sale.installments = [];
       sale.installments.push({ id: uid(), date: idate, amount: iamount });
+      var dueIdx = (sale.schedule || []).slice().sort(byDateAsc).map(function(s){ return s.id; })
+        .filter(function(sid){
+          var it = sale.schedule.filter(function(x){ return x.id === sid; })[0];
+          return Math.abs((Number(it.amount)||0) - iamount) < 0.011;
+        })[0];
+      if(dueIdx) sale.schedule = sale.schedule.filter(function(x){ return x.id !== dueIdx; });
+      save();
+      renderSales();
+      renderPayrollStats();
+      renderPayPeriods();
+    } else if(action === "add-scheduled"){
+      var sdate = card.querySelector(".sched-date-input").value;
+      var samount = parseFloat(card.querySelector(".sched-amount-input").value);
+      if(!sdate || !samount || samount <= 0) return;
+      var saleS = findById("sales", id);
+      if(!saleS.schedule) saleS.schedule = [];
+      saleS.schedule.push({ id: uid(), date: sdate, amount: samount });
+      save();
+      renderSales();
+    } else if(action === "delete-scheduled"){
+      var saleD = findById("sales", id);
+      saleD.schedule = (saleD.schedule || []).filter(function(x){ return x.id !== e.target.dataset.schedId; });
+      save();
+      renderSales();
+    } else if(action === "receive-scheduled"){
+      var saleR = findById("sales", id);
+      var item = (saleR.schedule || []).filter(function(x){ return x.id === e.target.dataset.schedId; })[0];
+      if(!item) return;
+      if(!saleR.installments) saleR.installments = [];
+      saleR.installments.push({ id: uid(), date: todayStr(), amount: Number(item.amount) || 0 });
+      saleR.schedule = saleR.schedule.filter(function(x){ return x.id !== item.id; });
       save();
       renderSales();
       renderPayrollStats();
@@ -1772,16 +1841,18 @@
     URL.revokeObjectURL(url);
   }
 
-  function cloneWithFreshIds(item, nestedKey){
+  function cloneWithFreshIds(item, nestedKeys){
     var clone = JSON.parse(JSON.stringify(item));
     clone.id = uid();
-    if(nestedKey && Array.isArray(clone[nestedKey])){
-      clone[nestedKey] = clone[nestedKey].map(function(sub){
-        var subClone = JSON.parse(JSON.stringify(sub));
-        subClone.id = uid();
-        return subClone;
-      });
-    }
+    (nestedKeys || []).forEach(function(nestedKey){
+      if(Array.isArray(clone[nestedKey])){
+        clone[nestedKey] = clone[nestedKey].map(function(sub){
+          var subClone = JSON.parse(JSON.stringify(sub));
+          subClone.id = uid();
+          return subClone;
+        });
+      }
+    });
     return clone;
   }
 
@@ -1793,7 +1864,7 @@
       alert("Could not import file: invalid JSON.");
       return;
     }
-    var nestedKeyFor = { projects: "grades", sales: "installments" };
+    var nestedKeyFor = { projects: ["grades"], sales: ["installments", "schedule"] };
     var keys = ["ideas","projects","goals","jobTasks","tasks","savings","paychecks","sales"];
     var count = 0;
     keys.forEach(function(k){
@@ -1804,6 +1875,7 @@
         });
       }
     });
+    migrateSchedules();
     save();
     renderAll();
     alert("Imported " + count + " entr" + (count === 1 ? "y" : "ies") + ".");
@@ -1826,6 +1898,7 @@
     e.target.value = "";
   });
 
+  migrateSchedules();
   renderAll();
 })();
 </script>
