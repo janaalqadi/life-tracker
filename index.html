@@ -418,7 +418,9 @@
       <div class="panel-toolbar">
         <div style="font-size:12.5px;color:var(--text-faint);">Payment-plan sales split commission per installment</div>
         <div style="display:flex;gap:8px;">
-          <button class="ghost" id="btn-report">Report</button>
+          <input type="month" id="report-month" style="width:auto;padding:6px 8px;font-size:12px;" title="Month for the period reports">
+          <button class="ghost btn-period" id="btn-report-first">First Period</button>
+          <button class="ghost btn-period" id="btn-report-second">Second Period</button>
           <button class="primary" data-open-form="sale">+ Add Sale</button>
         </div>
       </div>
@@ -1031,99 +1033,196 @@
   }
   function pdfMoney(n){ return "$" + (Number(n)||0).toFixed(2); }
 
-  function buildReportRows(){
-    return data.sales.map(function(sl){
-      var total = Number(sl.saleAmount) || 0;
-      var paid = salePaidAmount(sl);
-      var payments;
+  function commissionEvents(){
+    var events = [];
+    data.sales.forEach(function(sl){
+      var rate = (Number(sl.rate)||10) / 100;
       if(sl.paymentType === "full"){
-        payments = sl.paidFull ? pdfDate(sl.date) + ": " + pdfMoney(total) : "None yet";
+        if(sl.paidFull){
+          var amt = Number(sl.saleAmount)||0;
+          events.push({ sale: sl, date: sl.date, payment: amt, commission: amt * rate });
+        }
       } else {
-        var inst = (sl.installments || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
-        payments = inst.length ? inst.map(function(i){ return pdfDate(i.date) + ": " + pdfMoney(i.amount); }).join("\n") : "None yet";
+        (sl.installments || []).forEach(function(inst){
+          var a = Number(inst.amount)||0;
+          events.push({ sale: sl, date: inst.date, payment: a, commission: a * rate });
+        });
       }
-      return {
-        name: sl.name || "",
-        email: saleEmail(sl) || "-",
-        total: total,
-        payments: payments,
-        paid: paid,
-        pendingPayments: Math.max(0, total - paid),
-        commTaken: saleCommissionEarned(sl),
-        commPending: Math.max(0, saleCommissionTotal(sl) - saleCommissionEarned(sl))
-      };
     });
+    return events;
   }
 
-  function generateReport(){
-    if(data.sales.length === 0){
-      alert("No sales to report yet.");
-      return;
+  function pdfDateObj(dt){
+    return dt.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
+  }
+
+  var MONTH_NUM = { Jan:1, Feb:2, Mar:3, Apr:4, May:5, Jun:6, Jul:7, Aug:8, Sep:9, Oct:10, Nov:11, Dec:12 };
+
+  // Upcoming installments live in a sale's notes as "$X on Mon D, YYYY (upcoming)".
+  // Anything the user has since logged as a real installment is matched off so it stops showing as pending.
+  function scheduledPayments(sl){
+    var total = Number(sl.saleAmount) || 0;
+    if(sl.paymentType === "full"){
+      return sl.paidFull ? [] : [{ date: sl.date, amount: total }];
     }
-    var btn = document.getElementById("btn-report");
-    btn.disabled = true;
-    btn.textContent = "Building...";
+    var upcoming = [], notedReceived = [], m;
+    var re = /\$(\d+(?:\.\d+)?) on ([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) \((received|upcoming)\)/g;
+    while((m = re.exec(sl.notes || "")) !== null){
+      var mo = MONTH_NUM[m[2]];
+      if(!mo) continue;
+      var amt = parseFloat(m[1]);
+      if(m[5] === "received"){
+        notedReceived.push(amt);
+      } else {
+        upcoming.push({ date: m[4] + "-" + (mo < 10 ? "0" : "") + mo + "-" + (m[3].length < 2 ? "0" : "") + m[3], amount: amt });
+      }
+    }
+    upcoming.sort(function(a, b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+    var actual = (sl.installments || []).map(function(i){ return Number(i.amount) || 0; });
+    var takeMatch = function(list, amt){
+      for(var k = 0; k < list.length; k++){
+        if(Math.abs(list[k] - amt) < 0.011){ list.splice(k, 1); return true; }
+      }
+      return false;
+    };
+    notedReceived.forEach(function(a){ takeMatch(actual, a); });
+    return upcoming.filter(function(s){ return !takeMatch(actual, s.amount); });
+  }
+
+  function generatePeriodReport(half){
+    var monthVal = document.getElementById("report-month").value || todayStr().slice(0, 7);
+    var period = payPeriodForDate(monthVal + "-" + (half === "A" ? "01" : "16"));
+    var which = half === "A" ? "First Period" : "Second Period";
+    var btns = document.querySelectorAll(".btn-period");
+    var original = [];
+    btns.forEach(function(b){ original.push(b.textContent); b.disabled = true; b.textContent = "Building..."; });
+    var restore = function(){ btns.forEach(function(b, i){ b.disabled = false; b.textContent = original[i]; }); };
+
     loadPdfLibs().then(function(){
       var jsPDF = window.jspdf.jsPDF;
-      var doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "letter" });
-      var rows = buildReportRows();
-      var sum = function(key){ return rows.reduce(function(a, r){ return a + r[key]; }, 0); };
+      var doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
+      var pageH = doc.internal.pageSize.getHeight();
+      var bold = { fontStyle: "bold" };
+      var plain = function(s){ return s.replace(/–/g, "-"); };
+      var y = 42;
+
+      function heading(text){
+        if(y + 60 > pageH - 50){ doc.addPage(); y = 42; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(40);
+        doc.text(text, 40, y);
+        y += 8;
+      }
+      function note(text){
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(110);
+        doc.text(text, 40, y + 10);
+        y += 34;
+      }
+      function table(opts){
+        opts.startY = y;
+        opts.theme = "grid";
+        opts.styles = { fontSize: 8, cellPadding: 4, valign: "middle", lineColor: [210, 210, 215] };
+        opts.headStyles = { fillColor: [60, 60, 90], textColor: 255, fontStyle: "bold" };
+        opts.alternateRowStyles = { fillColor: [246, 246, 250] };
+        opts.margin = { left: 40, right: 40, top: 42, bottom: 50 };
+        doc.autoTable(opts);
+        y = doc.lastAutoTable.finalY + 22;
+      }
+      var sumOf = function(arr, key){ return arr.reduce(function(a, r){ return a + r[key]; }, 0); };
+      var byDateThenName = function(a, b){
+        if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+        return (a.sale.name || "").localeCompare(b.sale.name || "");
+      };
+
+      var collected = commissionEvents().filter(function(ev){
+        return payPeriodForDate(ev.date).key === period.key;
+      }).sort(byDateThenName);
+
+      var due = [];
+      data.sales.forEach(function(sl){
+        var rate = (Number(sl.rate) || 10) / 100;
+        scheduledPayments(sl).forEach(function(s){
+          if(payPeriodForDate(s.date).key === period.key){
+            due.push({ sale: sl, date: s.date, payment: s.amount, commission: s.amount * rate });
+          }
+        });
+      });
+      due.sort(byDateThenName);
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text("Commission Report", 40, 42);
+      doc.text(which + " Report", 40, y);
+      y += 16;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(110);
-      doc.text("Generated " + pdfDate(todayStr()) + "  |  " + rows.length + " sales  |  Commission rate per sale as entered (default 10%)", 40, 58);
-      doc.setTextColor(0);
+      doc.text(plain(period.label) + "  |  payout " + pdfDateObj(period.payDate) + "  |  generated " + pdfDate(todayStr()), 40, y);
+      y += 24;
 
-      var body = rows.map(function(r){
-        return [r.name, r.email, pdfMoney(r.total), r.payments, pdfMoney(r.paid), pdfMoney(r.pendingPayments), pdfMoney(r.commTaken), pdfMoney(r.commPending)];
-      });
-      body.push([
-        { content: "TOTAL", styles: { fontStyle: "bold" } }, "",
-        { content: pdfMoney(sum("total")), styles: { fontStyle: "bold" } }, "",
-        { content: pdfMoney(sum("paid")), styles: { fontStyle: "bold" } },
-        { content: pdfMoney(sum("pendingPayments")), styles: { fontStyle: "bold" } },
-        { content: pdfMoney(sum("commTaken")), styles: { fontStyle: "bold" } },
-        { content: pdfMoney(sum("commPending")), styles: { fontStyle: "bold" } }
-      ]);
-
-      doc.autoTable({
-        startY: 72,
-        head: [["Client", "Email", "Sale Total", "Payments Received", "Paid", "Payments Pending", "Commission Taken", "Commission Pending"]],
-        body: body,
-        theme: "grid",
-        styles: { fontSize: 8, cellPadding: 4, valign: "middle", lineColor: [210, 210, 215] },
-        headStyles: { fillColor: [60, 60, 90], textColor: 255, fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [246, 246, 250] },
-        columnStyles: {
-          0: { cellWidth: 95 },
-          1: { cellWidth: 140 },
-          2: { halign: "right", cellWidth: 55 },
-          3: { cellWidth: 115 },
-          4: { halign: "right", cellWidth: 55 },
-          5: { halign: "right", cellWidth: 62 },
-          6: { halign: "right", cellWidth: 62 },
-          7: { halign: "right", cellWidth: 62 }
-        },
-        margin: { left: 40, right: 40, bottom: 36 },
-        didDrawPage: function(){
-          doc.setFontSize(8);
-          doc.setTextColor(130);
-          doc.text("Page " + doc.internal.getNumberOfPages(), doc.internal.pageSize.getWidth() - 40, doc.internal.pageSize.getHeight() - 18, { align: "right" });
-          doc.setTextColor(0);
-        }
+      table({
+        head: [["Payments collected", "Commission taken", "Payments pending", "Commission pending"]],
+        body: [[
+          pdfMoney(sumOf(collected, "payment")), pdfMoney(sumOf(collected, "commission")),
+          pdfMoney(sumOf(due, "payment")), pdfMoney(sumOf(due, "commission"))
+        ]],
+        columnStyles: { 0: { halign: "center" }, 1: { halign: "center" }, 2: { halign: "center" }, 3: { halign: "center" } }
       });
 
-      doc.save("Commission-Report-" + todayStr() + ".pdf");
-    }).catch(function(){
-      alert("Couldn't load the PDF library - check your internet connection and try again.");
-    }).then(function(){
-      btn.disabled = false;
-      btn.textContent = "Report";
-    });
+      heading("Collected this period");
+      if(collected.length === 0){
+        note("No payments collected in this period yet.");
+      } else {
+        var cbody = collected.map(function(ev){
+          return [ev.sale.name || "", saleEmail(ev.sale) || "-", pdfDate(ev.date), pdfMoney(ev.payment), pdfMoney(ev.commission)];
+        });
+        cbody.push([
+          { content: "Subtotal", styles: bold }, "", "",
+          { content: pdfMoney(sumOf(collected, "payment")), styles: bold },
+          { content: pdfMoney(sumOf(collected, "commission")), styles: bold }
+        ]);
+        table({
+          head: [["Client", "Email", "Payment date", "Payment", "Commission taken"]],
+          body: cbody,
+          columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 175 }, 2: { cellWidth: 75 }, 3: { halign: "right", cellWidth: 72 }, 4: { halign: "right", cellWidth: 105 } }
+        });
+      }
+
+      heading("Still pending this period");
+      if(due.length === 0){
+        note("Nothing pending for this period.");
+      } else {
+        var dbody = due.map(function(ev){
+          return [ev.sale.name || "", saleEmail(ev.sale) || "-", pdfDate(ev.date), pdfMoney(ev.payment), pdfMoney(ev.commission)];
+        });
+        dbody.push([
+          { content: "Subtotal", styles: bold }, "", "",
+          { content: pdfMoney(sumOf(due, "payment")), styles: bold },
+          { content: pdfMoney(sumOf(due, "commission")), styles: bold }
+        ]);
+        table({
+          head: [["Client", "Email", "Due date", "Payment due", "Commission pending"]],
+          body: dbody,
+          columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 175 }, 2: { cellWidth: 75 }, 3: { halign: "right", cellWidth: 72 }, 4: { halign: "right", cellWidth: 105 } }
+        });
+      }
+
+      var pages = doc.internal.getNumberOfPages();
+      for(var i = 1; i <= pages; i++){
+        doc.setPage(i);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(130);
+        doc.text("Page " + i + " of " + pages, doc.internal.pageSize.getWidth() - 40, pageH - 22, { align: "right" });
+      }
+
+      doc.save("Commission-Report-" + which.replace(" ", "-") + "-" + monthVal + ".pdf");
+    }).catch(function(err){
+      console.error(err);
+      alert("Couldn't build the report - check your internet connection and try again.");
+    }).then(restore);
   }
 
   /* ---------- rendering ---------- */
@@ -1450,18 +1549,7 @@
 
   function renderPayPeriods(){
     var list = document.getElementById("list-pay-periods");
-    var events = [];
-    data.sales.forEach(function(sl){
-      if(sl.paymentType === "full"){
-        if(sl.paidFull){
-          events.push({ date: sl.date, amount: saleCommissionTotal(sl) });
-        }
-      } else {
-        (sl.installments || []).forEach(function(inst){
-          events.push({ date: inst.date, amount: (Number(inst.amount)||0) * (Number(sl.rate)||10) / 100 });
-        });
-      }
-    });
+    var events = commissionEvents();
 
     if(events.length === 0){
       list.innerHTML = '<div class="empty-state">No commission collected yet — this fills in once a sale is marked paid or an installment is added.</div>';
@@ -1472,7 +1560,7 @@
     events.forEach(function(ev){
       var p = payPeriodForDate(ev.date);
       if(!buckets[p.key]) buckets[p.key] = { label: p.label, payDate: p.payDate, total: 0 };
-      buckets[p.key].total += ev.amount;
+      buckets[p.key].total += ev.commission;
     });
 
     var today = new Date();
@@ -1720,7 +1808,10 @@
     alert("Imported " + count + " entr" + (count === 1 ? "y" : "ies") + ".");
   }
 
-  document.getElementById("btn-report").addEventListener("click", generateReport);
+  var reportMonth = document.getElementById("report-month");
+  reportMonth.value = todayStr().slice(0, 7);
+  document.getElementById("btn-report-first").addEventListener("click", function(){ generatePeriodReport("A"); });
+  document.getElementById("btn-report-second").addEventListener("click", function(){ generatePeriodReport("B"); });
   document.getElementById("btn-export").addEventListener("click", exportData);
   document.getElementById("btn-import").addEventListener("click", function(){
     document.getElementById("import-file-input").click();
