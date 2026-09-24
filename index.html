@@ -619,7 +619,10 @@
   var STORAGE_KEY = "lifeTrackerData";
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
-  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
   function fmtDate(d){
     if(!d) return "—";
     var parts = d.split("-");
@@ -1053,6 +1056,22 @@
     return events;
   }
 
+  // Payments still expected in a pay period (from each sale's Upcoming payments list).
+  // Sales with no payment at all yet are left out until their first payment is logged.
+  function expectedInPeriod(key){
+    var out = [];
+    data.sales.forEach(function(sl){
+      if(salePaidAmount(sl) <= 0) return;
+      var rate = (Number(sl.rate) || 10) / 100;
+      scheduledPayments(sl).forEach(function(s){
+        if(payPeriodForDate(s.date).key === key){
+          out.push({ sale: sl, date: s.date, payment: s.amount, commission: s.amount * rate });
+        }
+      });
+    });
+    return out;
+  }
+
   function pdfDateObj(dt){
     return dt.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
   }
@@ -1163,16 +1182,7 @@
         return payPeriodForDate(ev.date).key === period.key;
       }).sort(byDateThenName);
 
-      var due = [];
-      data.sales.forEach(function(sl){
-        if(salePaidAmount(sl) <= 0) return;
-        var rate = (Number(sl.rate) || 10) / 100;
-        scheduledPayments(sl).forEach(function(s){
-          if(payPeriodForDate(s.date).key === period.key){
-            due.push({ sale: sl, date: s.date, payment: s.amount, commission: s.amount * rate });
-          }
-        });
-      });
+      var due = expectedInPeriod(period.key);
       due.sort(byDateThenName);
 
       doc.setFont("helvetica", "bold");
@@ -1594,30 +1604,67 @@
   function renderPayPeriods(){
     var list = document.getElementById("list-pay-periods");
     var events = commissionEvents();
+    var buckets = {};
+    var bucketFor = function(p){
+      if(!buckets[p.key]) buckets[p.key] = { key: p.key, label: p.label, payDate: p.payDate, total: 0, paid: 0, lines: [], expected: [], expTotal: 0 };
+      return buckets[p.key];
+    };
+    events.forEach(function(ev){
+      var b = bucketFor(payPeriodForDate(ev.date));
+      b.total += ev.commission;
+      if(ev.paid) b.paid += ev.commission;
+      b.lines.push(ev);
+    });
+    data.sales.forEach(function(sl){
+      if(salePaidAmount(sl) <= 0) return;
+      scheduledPayments(sl).forEach(function(s){ bucketFor(payPeriodForDate(s.date)); });
+    });
+    Object.keys(buckets).forEach(function(k){
+      var b = buckets[k];
+      b.expected = expectedInPeriod(k).sort(function(x, y){ return x.date < y.date ? -1 : (x.date > y.date ? 1 : 0); });
+      b.expTotal = b.expected.reduce(function(a, e){ return a + e.commission; }, 0);
+      b.lines.sort(function(x, y){ return x.date < y.date ? -1 : (x.date > y.date ? 1 : 0); });
+    });
 
-    if(events.length === 0){
+    var rows = Object.keys(buckets).map(function(k){ return buckets[k]; });
+    if(rows.length === 0){
       list.innerHTML = '<div class="empty-state">No commission collected yet — this fills in once a sale is marked paid or an installment is added.</div>';
       return;
     }
 
-    var buckets = {};
-    events.forEach(function(ev){
-      var p = payPeriodForDate(ev.date);
-      if(!buckets[p.key]) buckets[p.key] = { label: p.label, payDate: p.payDate, total: 0, paid: 0 };
-      buckets[p.key].total += ev.commission;
-      if(ev.paid) buckets[p.key].paid += ev.commission;
-    });
-
     var today = new Date();
     today.setHours(0,0,0,0);
-    var rows = Object.keys(buckets).map(function(k){ return buckets[k]; });
     rows.sort(function(a,b){ return b.payDate - a.payDate; });
+
+    var lineRow = function(name, detail, amount, dim){
+      return '<div class="grade-row"><span class="g-name"'+(dim ? ' style="color:var(--text-soft)"' : '')+'>'+esc(name)+' <span style="color:var(--text-faint)">'+esc(detail)+'</span></span>' +
+        '<span'+(dim ? ' style="color:var(--text-soft)"' : ' class="g-score"')+'>'+fmtUSD(amount)+'</span></div>';
+    };
 
     list.innerHTML = rows.map(function(r){
       var allPaid = r.total > 0 && r.paid >= r.total - 0.005;
       var dueNow = r.payDate <= today;
-      var badgeClass = allPaid ? "status-done" : "status-inprogress";
-      var badgeText = allPaid ? "Paid" : (dueNow ? "Awaiting payroll" : "Next Payout");
+      var badgeClass, badgeText;
+      if(r.total <= 0){ badgeClass = "status-notstarted"; badgeText = "Upcoming"; }
+      else if(allPaid){ badgeClass = "status-done"; badgeText = "Paid"; }
+      else { badgeClass = "status-inprogress"; badgeText = dueNow ? "Awaiting payroll" : "Next Payout"; }
+
+      var collectedHtml = r.lines.map(function(ev){
+        var detail = ev.sale.paymentType === "full" ? pdfDate(ev.date) + " (paid in full, " + fmtUSD(ev.payment) + ")" : pdfDate(ev.date) + " (" + fmtUSD(ev.payment) + ")";
+        return lineRow(ev.sale.name || "", detail, ev.commission, false);
+      }).join("");
+      var expectedHtml = r.expected.map(function(ev){
+        return lineRow(ev.sale.name || "", "due " + pdfDate(ev.date) + " (" + fmtUSD(ev.payment) + ")", ev.commission, true);
+      }).join("");
+      var breakdown =
+        '<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">See what makes up this total</summary>' +
+          '<div style="margin-top:8px;">' +
+            '<div class="grades-header"><span>Collected — commission ' + fmtUSD(r.total) + '</span></div>' +
+            (collectedHtml || '<div style="font-size:12px;color:var(--text-faint);margin-bottom:6px;">Nothing collected in this period yet.</div>') +
+            (r.expected.length ? '<div class="grades-header" style="margin-top:10px;"><span>Still expected — commission ' + fmtUSD(r.expTotal) + '</span></div>' + expectedHtml : '') +
+          '</div>' +
+        '</details>';
+
       return (
         '<div class="card">' +
           '<div class="card-top">' +
@@ -1626,9 +1673,17 @@
                 '<span class="card-title">'+esc(r.label)+'</span>' +
                 '<span class="badge badge-status '+badgeClass+'">'+badgeText+'</span>' +
               '</div>' +
-              '<div class="card-meta"><span>Payout date '+fmtDateObj(r.payDate)+'</span><span>Ticked as paid '+fmtUSD(r.paid)+' of '+fmtUSD(r.total)+'</span></div>' +
+              '<div class="card-meta"><span>Payout date '+fmtDateObj(r.payDate)+'</span>' +
+                (r.total > 0 ? '<span>Ticked as paid '+fmtUSD(r.paid)+' of '+fmtUSD(r.total)+'</span>' : '') +
+                (r.expTotal > 0 ? '<span>Still expected '+fmtUSD(r.expTotal)+'</span>' : '') +
+              '</div>' +
+              breakdown +
             '</div>' +
-            '<div class="card-actions" style="align-items:center;"><span class="stat-value green" style="font-size:16px;">'+fmtUSD(r.total)+'</span></div>' +
+            '<div class="card-actions" style="flex-direction:column;align-items:flex-end;justify-content:center;">' +
+              '<span class="stat-value green" style="font-size:16px;">'+fmtUSD(r.total)+'</span>' +
+              '<span style="font-size:11px;color:var(--text-faint);">collected</span>' +
+              (r.expTotal > 0 ? '<span style="font-size:12px;color:var(--text-soft);margin-top:4px;">'+fmtUSD(r.total + r.expTotal)+' if all paid</span>' : '') +
+            '</div>' +
           '</div>' +
         '</div>'
       );
