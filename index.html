@@ -1944,19 +1944,61 @@
     }
     var nestedKeyFor = { projects: ["grades"], sales: ["installments", "schedule"] };
     var keys = ["ideas","projects","goals","jobTasks","tasks","savings","paychecks","sales"];
-    var count = 0;
+    var count = 0, updated = 0;
     keys.forEach(function(k){
       if(Array.isArray(imported[k])){
         imported[k].forEach(function(item){
-          data[k].push(cloneWithFreshIds(item, nestedKeyFor[k]));
-          count++;
+          var clone = cloneWithFreshIds(item, nestedKeyFor[k]);
+          // Sales are matched by client name so re-importing updates them instead of duplicating.
+          var match = k === "sales" ? data.sales.filter(function(s){
+            return (s.name || "").trim().toLowerCase() === (clone.name || "").trim().toLowerCase();
+          })[0] : null;
+          if(match){
+            mergeSale(match, clone);
+            updated++;
+          } else {
+            data[k].push(clone);
+            count++;
+          }
         });
       }
     });
     migrateSchedules();
     save();
     renderAll();
-    alert("Imported " + count + " entr" + (count === 1 ? "y" : "ies") + ".");
+    alert("Added " + count + " new entr" + (count === 1 ? "y" : "ies") + (updated ? " and updated " + updated + " existing sale" + (updated === 1 ? "" : "s") : "") + ".");
+  }
+
+  // Bring an existing sale in line with an imported one without losing what was logged in the app:
+  // payments already recorded (and their payroll ticks) are kept, new ones are added, and the
+  // upcoming-payments list is replaced with the file's (minus anything already logged).
+  function mergeSale(existing, inc){
+    var near = function(a, b){ return Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.011; };
+    existing.paymentType = inc.paymentType;
+    existing.saleAmount = inc.saleAmount;
+    if(inc.rate) existing.rate = inc.rate;
+    if(inc.email) existing.email = inc.email;
+    if(/Payment plan:/.test(existing.notes || "") || !existing.notes) existing.notes = inc.notes || existing.notes;
+    if(inc.paymentType === "full"){
+      if(inc.paidFull) existing.paidFull = true;
+      return;
+    }
+    if(!existing.installments) existing.installments = [];
+    var unmatched = existing.installments.slice();
+    (inc.installments || []).forEach(function(ii){
+      var idx = -1;
+      for(var j = 0; j < unmatched.length; j++){
+        if(near(unmatched[j].amount, ii.amount)){ idx = j; break; }
+      }
+      if(idx >= 0){ unmatched.splice(idx, 1); } else { existing.installments.push(ii); }
+    });
+    var schedule = (inc.schedule || []).slice();
+    unmatched.forEach(function(u){
+      for(var j = 0; j < schedule.length; j++){
+        if(near(schedule[j].amount, u.amount)){ schedule.splice(j, 1); break; }
+      }
+    });
+    existing.schedule = schedule;
   }
 
   var reportMonth = document.getElementById("report-month");
