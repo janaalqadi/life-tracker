@@ -269,6 +269,50 @@
   }
   .balance-banner .bal-label{font-size:12px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
   .balance-banner .bal-value{font-size:32px;font-weight:700;color:var(--accent);}
+  /* payroll: period filter + client payment plans */
+  .how-note{font-size:12.5px;color:var(--text-soft);line-height:1.6;margin-bottom:12px;}
+  .how-note b{color:var(--text);}
+  .range-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;}
+  .range-bar label{font-size:12px;color:var(--text-soft);display:flex;flex-direction:column;gap:4px;}
+  .range-bar input[type=date]{width:auto;padding:7px 9px;}
+  .preview-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+  .preview-head{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;}
+  .preview-head .lbl{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+  .preview-head .big{font-size:28px;font-weight:700;color:var(--green);line-height:1.1;}
+  .preview-head .mid{font-size:18px;font-weight:600;color:var(--text);line-height:1.1;}
+  .table-scroll{overflow-x:auto;}
+  table.preview{width:100%;border-collapse:collapse;font-size:13px;}
+  table.preview th{text-align:left;font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border);}
+  table.preview td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text-soft);}
+  table.preview th.num,table.preview td.num{text-align:right;white-space:nowrap;}
+  table.preview td b{color:var(--text);}
+  table.preview tr.total td{border-bottom:none;border-top:2px solid var(--border);font-weight:700;color:var(--text);}
+  .pay-line-item{white-space:nowrap;}
+  .faint{color:var(--text-faint);font-size:12px;}
+  .notice{background:#e3b95c14;border:1px solid #e3b95c55;border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:var(--text-soft);}
+  .notice b{color:var(--yellow);}
+  .pay-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 8px;background:var(--bg-elev);border-radius:6px;margin-bottom:5px;border-left:3px solid transparent;}
+  .pay-row.is-paid{border-left-color:var(--green);background:#5fd48a12;}
+  .pay-row input[type=date]{width:auto;padding:5px 7px;font-size:12.5px;}
+  .pay-row input[type=number]{width:104px;padding:5px 7px;font-size:12.5px;}
+  .pay-row .spacer{flex:1;}
+  .mini-tick{font-size:13px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;}
+  .mini-tick input{width:19px;height:19px;accent-color:var(--accent);vertical-align:middle;margin-right:6px;cursor:pointer;}
+  .plan-foot{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-faint);margin-top:8px;}
+  .plan-foot b{color:var(--text);}
+  .add-pay-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+  .add-pay-row input[type=date]{width:auto;padding:6px 8px;}
+  .add-pay-row input[type=number]{width:120px;padding:6px 8px;}
+  .client-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .client-head-main{min-width:0;}
+  @media (max-width:480px){
+    .app{padding-left:12px;padding-right:12px;}
+    .pay-row{gap:6px;}
+    .pay-row input[type=date]{max-width:128px;padding:5px 5px;}
+    .pay-row input[type=number]{width:80px;padding:5px 5px;}
+    .pay-row .spacer{display:none;}
+    .mini-tick input{margin-right:3px;}
+  }
   /* form */
   .form-overlay{
     display:none;
@@ -399,13 +443,27 @@
       <div class="card-list" id="list-job"></div>
     </section>
 
-    <!-- PAYROLL (base salary + commissions) -->
+    <!-- PAYROLL: commission for a period, clients' payment plans, paychecks -->
     <section class="tab-panel" id="tab-payroll">
-      <div class="stats-row" id="payroll-stats"></div>
+      <div id="payroll-warnings"></div>
 
-      <div class="section-heading">Commission by Pay Period</div>
-      <div style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">Each sale's commission is credited to whichever half of the month it was actually collected in — 1st&ndash;15th (paid the 16th) or 16th&ndash;end (paid the 1st)</div>
-      <div class="card-list" id="list-pay-periods"></div>
+      <div class="section-heading">Commission for a period</div>
+      <div class="how-note">Pick a start and end date (both days are included). It adds up the commission on every payment you've <b>ticked as paid</b> that has a date inside that period. Payments that aren't ticked are not counted. <span id="next-payday"></span></div>
+      <div class="range-bar">
+        <label>From <input type="date" id="rng-from"></label>
+        <label>To <input type="date" id="rng-to"></label>
+        <button class="ghost" id="rng-first" title="1st to 15th of the month in 'From'">First period</button>
+        <button class="ghost" id="rng-second" title="16th to the end of the month in 'From'">Second period</button>
+        <button class="primary" id="rng-pdf">Download PDF</button>
+      </div>
+      <div id="rng-preview"></div>
+
+      <div class="section-heading">Clients &amp; payment plans</div>
+      <div class="panel-toolbar">
+        <div style="font-size:12.5px;color:var(--text-faint);">Add each payment with its date, then tick it once the client has paid. A payment counts in the period of its date.</div>
+        <button class="primary" data-open-form="sale">+ Add Client</button>
+      </div>
+      <div class="card-list" id="list-sales"></div>
 
       <div class="section-heading">Paychecks</div>
       <div class="panel-toolbar">
@@ -413,18 +471,6 @@
         <button class="primary" data-open-form="paycheck">+ Add Paycheck</button>
       </div>
       <div class="card-list" id="list-paychecks"></div>
-
-      <div class="section-heading">Commissions (10% per sale)</div>
-      <div class="panel-toolbar">
-        <div style="font-size:12.5px;color:var(--text-faint);">Payment-plan sales split commission per installment</div>
-        <div style="display:flex;gap:8px;">
-          <input type="month" id="report-month" style="width:auto;padding:6px 8px;font-size:12px;" title="Month for the period reports">
-          <button class="ghost btn-period" id="btn-report-first">First Period</button>
-          <button class="ghost btn-period" id="btn-report-second">Second Period</button>
-          <button class="primary" data-open-form="sale">+ Add Sale</button>
-        </div>
-      </div>
-      <div class="card-list" id="list-sales"></div>
     </section>
 
     <!-- SAVINGS -->
@@ -674,12 +720,20 @@
 
   var defaultData = { ideas: [], projects: [], goals: [], jobTasks: [], tasks: [], savings: [], paychecks: [], sales: [] };
   var data;
+  var raw = null;
+  try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){}
   try{
-    var raw = localStorage.getItem(STORAGE_KEY);
     data = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(defaultData));
   }catch(e){
     data = JSON.parse(JSON.stringify(defaultData));
+    try{ localStorage.setItem(STORAGE_KEY + "_unreadable_copy", raw); }catch(_){}
   }
+  // One-time copy of everything exactly as it was before the payroll rebuild first touched it.
+  try{
+    if(raw && !localStorage.getItem(STORAGE_KEY + "_backup_before_rebuild")){
+      localStorage.setItem(STORAGE_KEY + "_backup_before_rebuild", raw);
+    }
+  }catch(e){}
   ["ideas","projects","goals","jobTasks","tasks","savings","paychecks","sales"].forEach(function(k){
     if(!Array.isArray(data[k])) data[k] = [];
   });
@@ -728,7 +782,7 @@
     task: ["f-taskdue-wrap","f-linkproject-wrap","f-complete-wrap"],
     saving: ["f-savingtype-wrap","f-savingdate-wrap","f-savingamount-wrap"],
     paycheck: ["f-paycheckdate-wrap","f-paycheckamount-wrap","f-paycheckreceived-wrap"],
-    sale: ["f-saleemail-wrap","f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"]
+    sale: ["f-saleemail-wrap","f-salerate-wrap"]
   };
 
   var statusOptions = {
@@ -787,9 +841,9 @@
     } else if(type === "paycheck"){
       formTitle.textContent = entry ? "Edit Paycheck" : "Add Paycheck";
     } else if(type === "sale"){
-      formTitle.textContent = entry ? "Edit Sale" : "Add Sale";
-      nameLabel.textContent = "Client / Deal Name";
-      document.getElementById("f-name").placeholder = "e.g. Acme Corp deal";
+      formTitle.textContent = entry ? "Edit Client" : "Add Client";
+      nameLabel.textContent = "Client name";
+      document.getElementById("f-name").placeholder = "e.g. Jane Smith";
     }
 
     if(entry){
@@ -827,12 +881,7 @@
         document.getElementById("f-paycheckreceived").checked = !!entry.received;
       } else if(type === "sale"){
         document.getElementById("f-saleemail").value = saleEmail(entry);
-        document.getElementById("f-saledate").value = entry.date || todayStr();
-        document.getElementById("f-saleamount").value = entry.saleAmount != null ? entry.saleAmount : "";
         document.getElementById("f-salerate").value = entry.rate != null ? entry.rate : 10;
-        document.getElementById("f-saletype").value = entry.paymentType || "full";
-        document.getElementById("f-salepaidfull").checked = !!entry.paidFull;
-        toggleSalePaidFullVisibility();
       }
     } else {
       if(type === "idea") document.getElementById("f-dateadded").value = todayStr();
@@ -842,21 +891,13 @@
         document.getElementById("f-paycheckamount").value = "350.00";
       }
       if(type === "sale"){
-        document.getElementById("f-saledate").value = todayStr();
         document.getElementById("f-salerate").value = 10;
-        toggleSalePaidFullVisibility();
       }
     }
 
     overlay.classList.add("open");
     if(!noNameTypes[type]) document.getElementById("f-name").focus();
   }
-
-  function toggleSalePaidFullVisibility(){
-    var isFull = document.getElementById("f-saletype").value === "full";
-    document.getElementById("f-salepaidfull-wrap").style.display = isFull ? "" : "none";
-  }
-  document.getElementById("f-saletype").addEventListener("change", toggleSalePaidFullVisibility);
 
   function populateStatus(type){
     var sel = document.getElementById("f-status");
@@ -957,17 +998,12 @@
       pcEntry.notes = notes;
       if(!editingId) data.paychecks.unshift(pcEntry);
     } else if(currentType === "sale"){
-      var slEntry = editingId ? findById("sales", editingId) : { id: uid(), installments: [] };
+      var slEntry = editingId ? findById("sales", editingId) : { id: uid(), payments: [] };
       slEntry.name = name;
       slEntry.email = document.getElementById("f-saleemail").value.trim();
-      slEntry.date =document.getElementById("f-saledate").value || todayStr();
-      slEntry.saleAmount = parseFloat(document.getElementById("f-saleamount").value) || 0;
       slEntry.rate = parseFloat(document.getElementById("f-salerate").value) || 10;
-      slEntry.paymentType = document.getElementById("f-saletype").value;
-      slEntry.paidFull = document.getElementById("f-salepaidfull").checked;
       slEntry.notes = notes;
-      if(!slEntry.installments) slEntry.installments = [];
-      if(!slEntry.schedule) slEntry.schedule = [];
+      if(!Array.isArray(slEntry.payments)) slEntry.payments = [];
       if(!editingId) data.sales.unshift(slEntry);
     }
 
@@ -983,31 +1019,257 @@
     data[section] = data[section].filter(function(x){ return x.id !== id; });
   }
 
-  /* ---------- commission math ---------- */
-  function saleCommissionTotal(sale){
-    return (Number(sale.saleAmount)||0) * (Number(sale.rate)||10) / 100;
+  /* ---------- payments & commission ---------- */
+  // Each client has one list of payments: { id, date, amount, paid }.
+  // Only payments ticked as paid count, and each counts in the period of its own date.
+  function round2(n){ return Math.round((Number(n) || 0) * 100 + 1e-7) / 100; }
+  function byDateAsc(a, b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); }
+  function isoFromDate(dt){
+    return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
   }
-  function saleCommissionEarned(sale){
-    if(sale.paymentType === "full"){
-      return sale.paidFull ? saleCommissionTotal(sale) : 0;
-    }
-    var sum = 0;
-    (sale.installments||[]).forEach(function(i){
-      sum += (Number(i.amount)||0) * (Number(sale.rate)||10) / 100;
-    });
-    return sum;
+  function saleRate(sl){ return Number(sl.rate) || 10; }
+  function paidTotal(sl){
+    var t = 0;
+    (sl.payments || []).forEach(function(p){ if(p.paid) t += Number(p.amount) || 0; });
+    return round2(t);
   }
-  function salePaidAmount(sale){
-    if(sale.paymentType === "full") return sale.paidFull ? (Number(sale.saleAmount)||0) : 0;
-    var sum = 0;
-    (sale.installments||[]).forEach(function(i){ sum += Number(i.amount)||0; });
-    return sum;
+  function planTotal(sl){
+    var t = 0;
+    (sl.payments || []).forEach(function(p){ t += Number(p.amount) || 0; });
+    return round2(t);
   }
 
   function saleEmail(sl){
     if(sl.email) return sl.email;
     var m = (sl.notes || "").match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g);
     return m ? m.join(", ") : "";
+  }
+
+  var MONTH_NUM = { Jan:1, Feb:2, Mar:3, Apr:4, May:5, Jun:6, Jul:7, Aug:8, Sep:9, Oct:10, Nov:11, Dec:12 };
+
+  // Oldest data kept upcoming payments as text in the notes ("$X on Mon D, YYYY (upcoming)").
+  function parseNotesSchedule(sl){
+    var upcoming = [], notedReceived = [], m;
+    var re = /\$(\d+(?:\.\d+)?) on ([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) \((received|upcoming)\)/g;
+    while((m = re.exec(sl.notes || "")) !== null){
+      var mo = MONTH_NUM[m[2]];
+      if(!mo) continue;
+      var amt = parseFloat(m[1]);
+      if(m[5] === "received"){
+        notedReceived.push(amt);
+      } else {
+        upcoming.push({ date: m[4] + "-" + (mo < 10 ? "0" : "") + mo + "-" + (m[3].length < 2 ? "0" : "") + m[3], amount: amt });
+      }
+    }
+    upcoming.sort(byDateAsc);
+    var actual = (sl.installments || []).map(function(i){ return Number(i.amount) || 0; });
+    var takeMatch = function(list, amt){
+      for(var k = 0; k < list.length; k++){
+        if(Math.abs(list[k] - amt) < 0.011){ list.splice(k, 1); return true; }
+      }
+      return false;
+    };
+    notedReceived.forEach(function(a){ takeMatch(actual, a); });
+    return upcoming.filter(function(s){ return !takeMatch(actual, s.amount); });
+  }
+
+  function migrateSchedules(){
+    var changed = false;
+    data.sales.forEach(function(sl){
+      if(sl.paymentType === "plan" && !Array.isArray(sl.payments) && !Array.isArray(sl.schedule)){
+        sl.schedule = parseNotesSchedule(sl).map(function(s){
+          return { id: uid(), date: s.date, amount: s.amount };
+        });
+        changed = true;
+      }
+    });
+    if(changed) save();
+  }
+
+  // Older versions kept a client's payments in separate lists (received / upcoming / a paid-in-full flag).
+  // This folds them into the single payments list. The old fields are left untouched.
+  function ensurePayments(sl){
+    if(Array.isArray(sl.payments)) return false;
+    var out = [];
+    if(sl.paymentType === "full"){
+      out.push({ id: uid(), date: sl.date || todayStr(), amount: Number(sl.saleAmount) || 0, paid: !!sl.paidFull });
+    } else {
+      (sl.installments || []).forEach(function(i){ out.push({ id: i.id || uid(), date: i.date, amount: Number(i.amount) || 0, paid: true }); });
+      (sl.schedule || []).forEach(function(s){ out.push({ id: s.id || uid(), date: s.date, amount: Number(s.amount) || 0, paid: false }); });
+    }
+    sl.payments = out;
+    return true;
+  }
+
+  // Moves the client's email into its own field and drops the old auto-generated schedule text from notes.
+  function normalizeSales(){
+    migrateSchedules();
+    var changed = false;
+    var emailRe = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+    data.sales.forEach(function(sl){
+      if(ensurePayments(sl)) changed = true;
+      var notes = sl.notes || "";
+      if(!sl.email){
+        var m = notes.match(emailRe);
+        if(m){ sl.email = m.join(", "); changed = true; }
+      }
+      var cleaned = notes
+        .replace(/Payment plan:[\s\S]*?\((?:received|upcoming)\)\./g, "")
+        .replace(/NOTE: Sep 14 installment was scheduled but not shown as collected[^.]*\./g, "")
+        .replace(/Email:\s*(?:[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?:,\s*)?)+\.?/g, "")
+        .replace(/Imported from Jana_Commissions_Sept16\.xlsx/g, "")
+        .replace(/\s{2,}/g, " ").trim();
+      if(cleaned !== notes){ sl.notes = cleaned; changed = true; }
+    });
+    if(changed) save();
+  }
+
+  function duplicateNames(){
+    var seen = {}, dup = {};
+    data.sales.forEach(function(sl){
+      var k = (sl.name || "").trim().toLowerCase();
+      if(!k) return;
+      if(seen[k]) dup[k] = true;
+      seen[k] = true;
+    });
+    return dup;
+  }
+
+  // Everything for one period: the ticked payments dated inside it, per client, plus what is not counted.
+  // The total is the commission on the total paid, rounded once (same as a "10% of total" check by hand).
+  function rangeReport(from, to){
+    var rows = [], notCounted = [], totalPaid = 0, commissionRaw = 0;
+    data.sales.forEach(function(sl){
+      var rate = saleRate(sl);
+      var items = [];
+      (sl.payments || []).forEach(function(p){
+        if(!p.date || p.date < from || p.date > to) return;
+        if(p.paid) items.push(p);
+        else notCounted.push({ sale: sl, date: p.date, amount: Number(p.amount) || 0 });
+      });
+      if(!items.length) return;
+      items.sort(byDateAsc);
+      var paid = 0;
+      items.forEach(function(p){ paid += Number(p.amount) || 0; });
+      totalPaid += paid;
+      commissionRaw += paid * rate / 100;
+      rows.push({ sale: sl, items: items, paid: round2(paid), commission: round2(paid * rate / 100) });
+    });
+    rows.sort(function(a, b){ return (a.sale.name || "").localeCompare(b.sale.name || ""); });
+    notCounted.sort(function(a, b){
+      if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return (a.sale.name || "").localeCompare(b.sale.name || "");
+    });
+    var notCountedAmount = 0;
+    notCounted.forEach(function(n){ notCountedAmount += n.amount; });
+    return { from: from, to: to, rows: rows, totalPaid: round2(totalPaid), commission: round2(commissionRaw),
+             notCounted: notCounted, notCountedAmount: round2(notCountedAmount) };
+  }
+
+  /* ---------- period filter + preview ---------- */
+  var RANGE_KEY = "lifeTrackerRange";
+
+  function initRange(){
+    var from = "", to = "";
+    try{
+      var r = JSON.parse(localStorage.getItem(RANGE_KEY) || "null");
+      if(r && r.from && r.to){ from = r.from; to = r.to; }
+    }catch(e){}
+    if(!from){
+      var p = payPeriodForDate(todayStr());
+      from = isoFromDate(p.start);
+      to = isoFromDate(p.end);
+    }
+    document.getElementById("rng-from").value = from;
+    document.getElementById("rng-to").value = to;
+  }
+
+  function rangeChanged(){
+    try{
+      localStorage.setItem(RANGE_KEY, JSON.stringify({
+        from: document.getElementById("rng-from").value,
+        to: document.getElementById("rng-to").value
+      }));
+    }catch(e){}
+    renderRangePreview();
+  }
+
+  function setHalf(half){
+    var base = document.getElementById("rng-from").value || todayStr();
+    var p = payPeriodForDate(base.slice(0, 7) + (half === "A" ? "-01" : "-16"));
+    document.getElementById("rng-from").value = isoFromDate(p.start);
+    document.getElementById("rng-to").value = isoFromDate(p.end);
+    rangeChanged();
+  }
+
+  function renderRangePreview(){
+    var box = document.getElementById("rng-preview");
+    document.getElementById("next-payday").textContent = "Next payday: " + fmtDateObj(nextPayDate()) + ".";
+    var from = document.getElementById("rng-from").value;
+    var to = document.getElementById("rng-to").value;
+    if(!from || !to){
+      box.innerHTML = '<div class="empty-state">Pick a start and end date to see the commission for that period.</div>';
+      return;
+    }
+    if(from > to){
+      box.innerHTML = '<div class="empty-state">The start date is after the end date.</div>';
+      return;
+    }
+    var r = rangeReport(from, to);
+    var paymentCount = 0, lineSum = 0;
+    r.rows.forEach(function(row){ paymentCount += row.items.length; lineSum += row.commission; });
+
+    var html = '<div class="preview-card">' +
+      '<div class="preview-head">' +
+        '<div><div class="lbl">Commission, ' + esc(fmtDate(from)) + ' to ' + esc(fmtDate(to)) + '</div><div class="big">' + fmtUSD(r.commission) + '</div></div>' +
+        '<div><div class="lbl">Payments collected</div><div class="mid">' + fmtUSD(r.totalPaid) + '</div></div>' +
+        '<div><div class="lbl">Clients</div><div class="mid">' + r.rows.length + '</div></div>' +
+      '</div>';
+
+    if(!r.rows.length){
+      html += '<div class="faint">No payments are ticked as paid with a date in this period.</div>';
+    } else {
+      html += '<div class="table-scroll"><table class="preview"><thead><tr>' +
+        '<th>Client</th><th>Payments made</th><th class="num">Paid</th><th class="num">Commission</th></tr></thead><tbody>';
+      r.rows.forEach(function(row){
+        var email = saleEmail(row.sale);
+        html += '<tr><td><b>' + esc(row.sale.name) + '</b>' + (email ? '<div class="faint">' + esc(email) + '</div>' : '') + '</td>' +
+          '<td>' + row.items.map(function(p){
+            return '<div class="pay-line-item">' + esc(fmtDate(p.date)) + ' &middot; ' + fmtUSD(p.amount) + '</div>';
+          }).join('') + '</td>' +
+          '<td class="num">' + fmtUSD(row.paid) + '</td><td class="num">' + fmtUSD(row.commission) + '</td></tr>';
+      });
+      html += '<tr class="total"><td>Total</td><td>' + paymentCount + ' payment' + (paymentCount === 1 ? '' : 's') + '</td>' +
+        '<td class="num">' + fmtUSD(r.totalPaid) + '</td><td class="num">' + fmtUSD(r.commission) + '</td></tr>';
+      html += '</tbody></table></div>';
+      if(Math.abs(lineSum - r.commission) > 0.004){
+        html += '<div class="faint" style="margin-top:8px;">The total is the commission on the total paid, rounded once. The client lines are each rounded to the cent, so they can add up to a cent or two more or less.</div>';
+      }
+    }
+
+    if(r.notCounted.length){
+      html += '<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:12.5px;color:var(--yellow);">Not counted: ' +
+        r.notCounted.length + ' payment' + (r.notCounted.length === 1 ? '' : 's') + ' in this period (' + fmtUSD(r.notCountedAmount) + ') not ticked as paid yet</summary>' +
+        '<div style="margin-top:8px;">' + r.notCounted.map(function(n){
+          return '<div class="grade-row"><span class="g-name">' + esc(n.sale.name) + ' <span class="faint">' + esc(fmtDate(n.date)) + '</span></span><span>' + fmtUSD(n.amount) + '</span></div>';
+        }).join('') + '</div></details>';
+    }
+    html += '</div>';
+    box.innerHTML = html;
+  }
+
+  function renderPayrollWarnings(){
+    var box = document.getElementById("payroll-warnings");
+    var dup = duplicateNames();
+    var keys = Object.keys(dup);
+    if(!keys.length){ box.innerHTML = ""; return; }
+    var names = keys.map(function(k){
+      var first = data.sales.filter(function(s){ return (s.name || "").trim().toLowerCase() === k; })[0];
+      return esc(first.name);
+    });
+    box.innerHTML = '<div class="notice"><b>Duplicate clients</b><br>' + names.join(', ') +
+      (names.length === 1 ? ' appears' : ' appear') + ' more than once in the client list below, so their payments are counted twice. ' +
+      'Each extra copy is marked "Duplicate" - delete the one you don\'t want to keep.</div>';
   }
 
   /* ---------- PDF report ---------- */
@@ -1037,114 +1299,27 @@
   }
   function pdfMoney(n){ return "$" + (Number(n)||0).toFixed(2); }
 
-  function commissionEvents(){
-    var events = [];
-    data.sales.forEach(function(sl){
-      var rate = (Number(sl.rate)||10) / 100;
-      if(sl.paymentType === "full"){
-        if(sl.paidFull){
-          var amt = Number(sl.saleAmount)||0;
-          events.push({ sale: sl, date: sl.date, payment: amt, commission: amt * rate, paid: !!sl.payrollPaid });
-        }
-      } else {
-        (sl.installments || []).forEach(function(inst){
-          var a = Number(inst.amount)||0;
-          events.push({ sale: sl, date: inst.date, payment: a, commission: a * rate, paid: !!inst.payrollPaid });
-        });
-      }
-    });
-    return events;
-  }
-
-  // Payments still expected in a pay period (from each sale's Upcoming payments list).
-  // Sales with no payment at all yet are left out until their first payment is logged.
-  function expectedInPeriod(key){
-    var out = [];
-    data.sales.forEach(function(sl){
-      if(salePaidAmount(sl) <= 0) return;
-      var rate = (Number(sl.rate) || 10) / 100;
-      scheduledPayments(sl).forEach(function(s){
-        if(payPeriodForDate(s.date).key === key){
-          out.push({ sale: sl, date: s.date, payment: s.amount, commission: s.amount * rate });
-        }
-      });
-    });
-    return out;
-  }
-
-  function pdfDateObj(dt){
-    return dt.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
-  }
-
-  var MONTH_NUM = { Jan:1, Feb:2, Mar:3, Apr:4, May:5, Jun:6, Jul:7, Aug:8, Sep:9, Oct:10, Nov:11, Dec:12 };
-
-  function byDateAsc(a, b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); }
-
-  // Expected (not yet received) payments for a sale, from its own schedule list in the app.
-  function scheduledPayments(sl){
-    if(sl.paymentType === "full"){
-      return sl.paidFull ? [] : [{ date: sl.date, amount: Number(sl.saleAmount) || 0 }];
+  function downloadRangePdf(){
+    var from = document.getElementById("rng-from").value;
+    var to = document.getElementById("rng-to").value;
+    if(!from || !to || from > to){
+      alert("Pick a start date and an end date first (the start must come before the end).");
+      return;
     }
-    return (sl.schedule || []).map(function(s){
-      return { date: s.date, amount: Number(s.amount) || 0 };
-    }).sort(byDateAsc);
-  }
-
-  // One-time conversion: sales imported earlier carried their upcoming payments as text in the
-  // notes ("$X on Mon D, YYYY (upcoming)"). Turn that into a real schedule list.
-  function parseNotesSchedule(sl){
-    var upcoming = [], notedReceived = [], m;
-    var re = /\$(\d+(?:\.\d+)?) on ([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) \((received|upcoming)\)/g;
-    while((m = re.exec(sl.notes || "")) !== null){
-      var mo = MONTH_NUM[m[2]];
-      if(!mo) continue;
-      var amt = parseFloat(m[1]);
-      if(m[5] === "received"){
-        notedReceived.push(amt);
-      } else {
-        upcoming.push({ date: m[4] + "-" + (mo < 10 ? "0" : "") + mo + "-" + (m[3].length < 2 ? "0" : "") + m[3], amount: amt });
-      }
+    var r = rangeReport(from, to);
+    if(!r.rows.length && !r.notCounted.length){
+      alert("There are no payments in that period.");
+      return;
     }
-    upcoming.sort(function(a, b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
-    var actual = (sl.installments || []).map(function(i){ return Number(i.amount) || 0; });
-    var takeMatch = function(list, amt){
-      for(var k = 0; k < list.length; k++){
-        if(Math.abs(list[k] - amt) < 0.011){ list.splice(k, 1); return true; }
-      }
-      return false;
-    };
-    notedReceived.forEach(function(a){ takeMatch(actual, a); });
-    return upcoming.filter(function(s){ return !takeMatch(actual, s.amount); });
-  }
-
-  function migrateSchedules(){
-    var changed = false;
-    data.sales.forEach(function(sl){
-      if(sl.paymentType === "plan" && !Array.isArray(sl.schedule)){
-        sl.schedule = parseNotesSchedule(sl).map(function(s){
-          return { id: uid(), date: s.date, amount: s.amount };
-        });
-        changed = true;
-      }
-    });
-    if(changed) save();
-  }
-
-  function generatePeriodReport(half){
-    var monthVal = document.getElementById("report-month").value || todayStr().slice(0, 7);
-    var period = payPeriodForDate(monthVal + "-" + (half === "A" ? "01" : "16"));
-    var which = half === "A" ? "First Period" : "Second Period";
-    var btns = document.querySelectorAll(".btn-period");
-    var original = [];
-    btns.forEach(function(b){ original.push(b.textContent); b.disabled = true; b.textContent = "Building..."; });
-    var restore = function(){ btns.forEach(function(b, i){ b.disabled = false; b.textContent = original[i]; }); };
+    var btn = document.getElementById("rng-pdf");
+    btn.disabled = true;
+    btn.textContent = "Building...";
 
     loadPdfLibs().then(function(){
       var jsPDF = window.jspdf.jsPDF;
       var doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
       var pageH = doc.internal.pageSize.getHeight();
       var bold = { fontStyle: "bold" };
-      var plain = function(s){ return s.replace(/–/g, "-"); };
       var y = 42;
 
       function heading(text){
@@ -1154,13 +1329,6 @@
         doc.setTextColor(40);
         doc.text(text, 40, y);
         y += 8;
-      }
-      function note(text){
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(110);
-        doc.text(text, 40, y + 10);
-        y += 34;
       }
       function table(opts){
         opts.startY = y;
@@ -1172,74 +1340,60 @@
         doc.autoTable(opts);
         y = doc.lastAutoTable.finalY + 22;
       }
-      var sumOf = function(arr, key){ return arr.reduce(function(a, r){ return a + r[key]; }, 0); };
-      var byDateThenName = function(a, b){
-        if(a.date !== b.date) return a.date < b.date ? -1 : 1;
-        return (a.sale.name || "").localeCompare(b.sale.name || "");
-      };
 
-      var collected = commissionEvents().filter(function(ev){
-        return payPeriodForDate(ev.date).key === period.key;
-      }).sort(byDateThenName);
-
-      var due = expectedInPeriod(period.key);
-      due.sort(byDateThenName);
+      var paymentCount = 0;
+      r.rows.forEach(function(row){ paymentCount += row.items.length; });
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text(which + " Report", 40, y);
+      doc.text("Commission Report", 40, y);
       y += 16;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(110);
-      doc.text(plain(period.label) + "  |  payout " + pdfDateObj(period.payDate) + "  |  generated " + pdfDate(todayStr()), 40, y);
-      y += 24;
+      doc.text(pdfDate(from) + " to " + pdfDate(to) + "  |  generated " + pdfDate(todayStr()), 40, y);
+      y += 22;
 
       table({
-        head: [["Payments collected", "Commission taken", "Paid in payroll", "Payments pending", "Commission pending"]],
-        body: [[
-          pdfMoney(sumOf(collected, "payment")), pdfMoney(sumOf(collected, "commission")),
-          pdfMoney(collected.filter(function(ev){ return ev.paid; }).reduce(function(a, ev){ return a + ev.commission; }, 0)),
-          pdfMoney(sumOf(due, "payment")), pdfMoney(sumOf(due, "commission"))
-        ]],
-        columnStyles: { 0: { halign: "center" }, 1: { halign: "center" }, 2: { halign: "center" }, 3: { halign: "center" }, 4: { halign: "center" } }
+        head: [["Payments collected", "Clients", "Commission"]],
+        body: [[pdfMoney(r.totalPaid), String(r.rows.length), pdfMoney(r.commission)]],
+        columnStyles: { 0: { halign: "center" }, 1: { halign: "center" }, 2: { halign: "center", fontStyle: "bold" } }
       });
 
-      heading("Collected this period");
-      if(collected.length === 0){
-        note("No payments collected in this period yet.");
+      heading("Payments made (ticked as paid)");
+      if(!r.rows.length){
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(110);
+        doc.text("No payments are ticked as paid in this period.", 40, y + 10);
+        y += 34;
       } else {
-        var cbody = collected.map(function(ev){
-          return [ev.sale.name || "", saleEmail(ev.sale) || "-", pdfDate(ev.date), pdfMoney(ev.payment), pdfMoney(ev.commission), ev.paid ? "Yes" : "No"];
+        var body = r.rows.map(function(row){
+          return [row.sale.name || "", saleEmail(row.sale) || "-",
+            row.items.map(function(p){ return pdfDate(p.date) + ": " + pdfMoney(p.amount); }).join("\n"),
+            pdfMoney(row.paid), pdfMoney(row.commission)];
         });
-        cbody.push([
-          { content: "Subtotal", styles: bold }, "", "",
-          { content: pdfMoney(sumOf(collected, "payment")), styles: bold },
-          { content: pdfMoney(sumOf(collected, "commission")), styles: bold }, ""
+        body.push([
+          { content: "TOTAL", styles: bold }, "", { content: paymentCount + " payments", styles: bold },
+          { content: pdfMoney(r.totalPaid), styles: bold }, { content: pdfMoney(r.commission), styles: bold }
         ]);
         table({
-          head: [["Client", "Email", "Payment date", "Payment", "Commission taken", "In payroll"]],
-          body: cbody,
-          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 150 }, 2: { cellWidth: 70 }, 3: { halign: "right", cellWidth: 65 }, 4: { halign: "right", cellWidth: 82 }, 5: { halign: "center", cellWidth: 65 } }
+          head: [["Client", "Email", "Payments made", "Paid", "Commission"]],
+          body: body,
+          columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 150 }, 2: { cellWidth: 110 }, 3: { halign: "right", cellWidth: 70 }, 4: { halign: "right", cellWidth: 75 } }
         });
       }
 
-      heading("Still pending this period");
-      if(due.length === 0){
-        note("Nothing pending for this period.");
-      } else {
-        var dbody = due.map(function(ev){
-          return [ev.sale.name || "", saleEmail(ev.sale) || "-", pdfDate(ev.date), pdfMoney(ev.payment), pdfMoney(ev.commission)];
+      if(r.notCounted.length){
+        heading("Not counted - not ticked as paid yet");
+        var nbody = r.notCounted.map(function(n){
+          return [n.sale.name || "", saleEmail(n.sale) || "-", pdfDate(n.date), pdfMoney(n.amount)];
         });
-        dbody.push([
-          { content: "Subtotal", styles: bold }, "", "",
-          { content: pdfMoney(sumOf(due, "payment")), styles: bold },
-          { content: pdfMoney(sumOf(due, "commission")), styles: bold }
-        ]);
+        nbody.push([{ content: "TOTAL", styles: bold }, "", "", { content: pdfMoney(r.notCountedAmount), styles: bold }]);
         table({
-          head: [["Client", "Email", "Due date", "Payment due", "Commission pending"]],
-          body: dbody,
-          columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 175 }, 2: { cellWidth: 75 }, 3: { halign: "right", cellWidth: 72 }, 4: { halign: "right", cellWidth: 105 } }
+          head: [["Client", "Email", "Date", "Amount"]],
+          body: nbody,
+          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 190 }, 2: { cellWidth: 100 }, 3: { halign: "right", cellWidth: 80 } }
         });
       }
 
@@ -1252,11 +1406,14 @@
         doc.text("Page " + i + " of " + pages, doc.internal.pageSize.getWidth() - 40, pageH - 22, { align: "right" });
       }
 
-      doc.save("Commission-Report-" + which.replace(" ", "-") + "-" + monthVal + ".pdf");
+      doc.save("Commission-Report-" + from + "-to-" + to + ".pdf");
     }).catch(function(err){
       console.error(err);
       alert("Couldn't build the report - check your internet connection and try again.");
-    }).then(restore);
+    }).then(function(){
+      btn.disabled = false;
+      btn.textContent = "Download PDF";
+    });
   }
 
   /* ---------- rendering ---------- */
@@ -1516,173 +1673,54 @@
 
   function renderSales(){
     var list = document.getElementById("list-sales");
-    var items = data.sales;
-    if(items.length === 0){
-      list.innerHTML = '<div class="empty-state">No sales logged yet.</div>';
+    if(data.sales.length === 0){
+      list.innerHTML = '<div class="empty-state">No clients yet. Add one, then add their payments.</div>';
       return;
     }
-    list.innerHTML = items.map(function(sl){
-      var total = saleCommissionTotal(sl);
-      var earned = saleCommissionEarned(sl);
-      var remaining = total - earned;
-      var installmentsHtml = "";
-      if(sl.paymentType === "plan"){
-        var rows = (sl.installments||[]).map(function(i){
-          var comm = (Number(i.amount)||0) * (Number(sl.rate)||10) / 100;
-          return '<div class="grade-row" data-inst-id="'+i.id+'">' +
-            '<span class="g-name">'+fmtDate(i.date)+' — '+fmtUSD(i.amount)+'</span>' +
-            '<span><label style="font-size:13px;font-weight:600;color:var(--text);margin-right:14px;cursor:pointer;" title="Tick when this commission was included in payroll">' +
-              '<input type="checkbox" class="comm-check" data-inst-id="'+i.id+'" '+(i.payrollPaid?'checked ':'')+'style="width:19px;height:19px;accent-color:var(--accent);vertical-align:middle;margin-right:6px;cursor:pointer;">paid</label>' +
-            '<span class="g-score">+'+fmtUSD(comm)+'</span> ' +
-            '<button class="icon-btn" data-action="delete-installment" data-inst-id="'+i.id+'">✕</button></span>' +
-            '</div>';
-        }).join("");
-        var schedRows = scheduledPayments(sl).map(function(s){
-          var sid = (sl.schedule || []).filter(function(x){ return x.date === s.date && Math.abs((Number(x.amount)||0) - s.amount) < 0.001; })[0];
-          sid = sid ? sid.id : "";
-          return '<div class="grade-row">' +
-            '<span class="g-name">'+fmtDate(s.date)+' — '+fmtUSD(s.amount)+'</span>' +
-            '<span><button class="icon-btn" style="color:var(--green)" data-action="receive-scheduled" data-sched-id="'+sid+'">Received</button>' +
-            '<button class="icon-btn" data-action="delete-scheduled" data-sched-id="'+sid+'">✕</button></span>' +
-            '</div>';
-        }).join("");
-        installmentsHtml =
-          '<div class="grades-block">' +
-            '<div class="grades-header"><span>Installments received</span></div>' +
-            rows +
-            '<div class="grade-add-row">' +
-              '<input type="date" class="inst-date-input" value="'+todayStr()+'" style="max-width:150px">' +
-              '<input type="number" step="0.01" min="0" placeholder="Amount paid (USD)" class="inst-amount-input">' +
-              '<button class="ghost" data-action="add-installment" style="padding:6px 12px;font-size:12px;">Add</button>' +
-            '</div>' +
-            '<div class="grades-header" style="margin-top:14px"><span>Upcoming payments</span></div>' +
-            schedRows +
-            '<div class="grade-add-row">' +
-              '<input type="date" class="sched-date-input" value="'+todayStr()+'" style="max-width:150px">' +
-              '<input type="number" step="0.01" min="0" placeholder="Amount due (USD)" class="sched-amount-input">' +
-              '<button class="ghost" data-action="add-scheduled" style="padding:6px 12px;font-size:12px;">Add</button>' +
-            '</div>' +
-            '<div class="commission-summary">' +
-              '<div><span>Sale Amount</span><b>'+fmtUSD(sl.saleAmount)+'</b></div>' +
-              '<div><span>Paid So Far</span><b>'+fmtUSD(salePaidAmount(sl))+'</b></div>' +
-              '<div><span>Commission Earned</span><b>'+fmtUSD(earned)+'</b></div>' +
-              '<div><span>Commission Remaining</span><b>'+fmtUSD(remaining)+'</b></div>' +
-            '</div>' +
-          '</div>';
-      } else {
-        installmentsHtml =
-          '<div class="commission-summary">' +
-            '<div><span>Sale Amount</span><b>'+fmtUSD(sl.saleAmount)+'</b></div>' +
-            '<div><span>Commission ('+ (sl.rate||10) +'%)</span><b>'+fmtUSD(total)+'</b></div>' +
-            '<div><span>Status</span><b>'+(sl.paidFull ? "Received" : "Pending")+'</b></div>' +
-            (sl.paidFull ? '<div><span>In payroll</span><label style="cursor:pointer;font-size:13px;" title="Tick when this commission was included in payroll">' +
-              '<input type="checkbox" class="comm-check" '+(sl.payrollPaid?'checked ':'')+'style="width:19px;height:19px;accent-color:var(--accent);vertical-align:middle;margin-right:6px;cursor:pointer;">paid</label></div>' : '') +
-          '</div>';
-      }
+    var dup = duplicateNames();
+    var today = todayStr();
+    list.innerHTML = data.sales.map(function(sl){
+      var rows = (sl.payments || []).slice().sort(byDateAsc).map(function(p){
+        return '<div class="pay-row' + (p.paid ? ' is-paid' : '') + '" data-pay-id="' + p.id + '">' +
+          '<input type="date" class="pay-date" value="' + esc(p.date) + '" title="The day this payment is due or was paid. It decides which period it counts in.">' +
+          '<input type="number" step="0.01" min="0" class="pay-amount" value="' + (Number(p.amount) || 0).toFixed(2) + '">' +
+          '<span class="spacer"></span>' +
+          '<label class="mini-tick" title="Tick when the client has paid"><input type="checkbox" class="pay-paid" ' + (p.paid ? 'checked' : '') + '>paid</label>' +
+          '<button class="icon-btn" data-action="pay-del" title="Delete this payment">✕</button>' +
+        '</div>';
+      }).join("");
+      var paid = paidTotal(sl), total = planTotal(sl);
+      var email = saleEmail(sl);
+      var isDup = dup[(sl.name || "").trim().toLowerCase()];
       return (
-        '<div class="card" data-id="'+sl.id+'" data-section="sales">' +
-          '<div class="card-top">' +
-            '<div class="card-main">' +
+        '<div class="card" data-id="' + sl.id + '" data-section="sales">' +
+          '<div class="client-head">' +
+            '<div class="client-head-main">' +
               '<div class="card-title-row">' +
-                '<span class="card-title">'+esc(sl.name)+'</span>' +
-                '<span class="badge badge-'+(sl.paymentType==='plan'?'plan':'full')+'">'+(sl.paymentType==='plan'?'Payment Plan':'Paid in Full')+'</span>' +
+                '<span class="card-title">' + esc(sl.name) + '</span>' +
+                (isDup ? '<span class="badge status-inprogress">Duplicate</span>' : '') +
               '</div>' +
-              '<div class="card-meta"><span>Sale Date '+fmtDate(sl.date)+'</span>'+(saleEmail(sl) ? '<span>'+esc(saleEmail(sl))+'</span>' : '')+'</div>' +
-              (sl.notes ? '<div class="card-notes">'+esc(sl.notes)+'</div>' : '') +
-              installmentsHtml +
+              (email ? '<div class="card-meta"><span>' + esc(email) + '</span></div>' : '') +
             '</div>' +
             '<div class="card-actions">' +
               '<button class="icon-btn" data-action="edit">Edit</button>' +
               '<button class="icon-btn" data-action="delete">Delete</button>' +
             '</div>' +
           '</div>' +
-        '</div>'
-      );
-    }).join("");
-  }
-
-  function renderPayPeriods(){
-    var list = document.getElementById("list-pay-periods");
-    var events = commissionEvents();
-    var buckets = {};
-    var bucketFor = function(p){
-      if(!buckets[p.key]) buckets[p.key] = { key: p.key, label: p.label, payDate: p.payDate, total: 0, paid: 0, lines: [], expected: [], expTotal: 0 };
-      return buckets[p.key];
-    };
-    events.forEach(function(ev){
-      var b = bucketFor(payPeriodForDate(ev.date));
-      b.total += ev.commission;
-      if(ev.paid) b.paid += ev.commission;
-      b.lines.push(ev);
-    });
-    data.sales.forEach(function(sl){
-      if(salePaidAmount(sl) <= 0) return;
-      scheduledPayments(sl).forEach(function(s){ bucketFor(payPeriodForDate(s.date)); });
-    });
-    Object.keys(buckets).forEach(function(k){
-      var b = buckets[k];
-      b.expected = expectedInPeriod(k).sort(function(x, y){ return x.date < y.date ? -1 : (x.date > y.date ? 1 : 0); });
-      b.expTotal = b.expected.reduce(function(a, e){ return a + e.commission; }, 0);
-      b.lines.sort(function(x, y){ return x.date < y.date ? -1 : (x.date > y.date ? 1 : 0); });
-    });
-
-    var rows = Object.keys(buckets).map(function(k){ return buckets[k]; });
-    if(rows.length === 0){
-      list.innerHTML = '<div class="empty-state">No commission collected yet — this fills in once a sale is marked paid or an installment is added.</div>';
-      return;
-    }
-
-    var today = new Date();
-    today.setHours(0,0,0,0);
-    rows.sort(function(a,b){ return b.payDate - a.payDate; });
-
-    var lineRow = function(name, detail, amount, dim){
-      return '<div class="grade-row"><span class="g-name"'+(dim ? ' style="color:var(--text-soft)"' : '')+'>'+esc(name)+' <span style="color:var(--text-faint)">'+esc(detail)+'</span></span>' +
-        '<span'+(dim ? ' style="color:var(--text-soft)"' : ' class="g-score"')+'>'+fmtUSD(amount)+'</span></div>';
-    };
-
-    list.innerHTML = rows.map(function(r){
-      var allPaid = r.total > 0 && r.paid >= r.total - 0.005;
-      var dueNow = r.payDate <= today;
-      var badgeClass, badgeText;
-      if(r.total <= 0){ badgeClass = "status-notstarted"; badgeText = "Upcoming"; }
-      else if(allPaid){ badgeClass = "status-done"; badgeText = "Paid"; }
-      else { badgeClass = "status-inprogress"; badgeText = dueNow ? "Awaiting payroll" : "Next Payout"; }
-
-      var collectedHtml = r.lines.map(function(ev){
-        var detail = ev.sale.paymentType === "full" ? pdfDate(ev.date) + " (paid in full, " + fmtUSD(ev.payment) + ")" : pdfDate(ev.date) + " (" + fmtUSD(ev.payment) + ")";
-        return lineRow(ev.sale.name || "", detail, ev.commission, false);
-      }).join("");
-      var expectedHtml = r.expected.map(function(ev){
-        return lineRow(ev.sale.name || "", "due " + pdfDate(ev.date) + " (" + fmtUSD(ev.payment) + ")", ev.commission, true);
-      }).join("");
-      var breakdown =
-        '<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:var(--accent);">See what makes up this total</summary>' +
-          '<div style="margin-top:8px;">' +
-            '<div class="grades-header"><span>Collected — commission ' + fmtUSD(r.total) + '</span></div>' +
-            (collectedHtml || '<div style="font-size:12px;color:var(--text-faint);margin-bottom:6px;">Nothing collected in this period yet.</div>') +
-            (r.expected.length ? '<div class="grades-header" style="margin-top:10px;"><span>Still expected — commission ' + fmtUSD(r.expTotal) + '</span></div>' + expectedHtml : '') +
-          '</div>' +
-        '</details>';
-
-      return (
-        '<div class="card">' +
-          '<div class="card-top">' +
-            '<div class="card-main">' +
-              '<div class="card-title-row">' +
-                '<span class="card-title">'+esc(r.label)+'</span>' +
-                '<span class="badge badge-status '+badgeClass+'">'+badgeText+'</span>' +
-              '</div>' +
-              '<div class="card-meta"><span>Payout date '+fmtDateObj(r.payDate)+'</span>' +
-                (r.total > 0 ? '<span>Ticked as paid '+fmtUSD(r.paid)+' of '+fmtUSD(r.total)+'</span>' : '') +
-                (r.expTotal > 0 ? '<span>Still expected '+fmtUSD(r.expTotal)+'</span>' : '') +
-              '</div>' +
-              breakdown +
+          (sl.notes ? '<div class="card-notes">' + esc(sl.notes) + '</div>' : '') +
+          '<div class="grades-block" style="margin-top:10px;padding-top:10px;">' +
+            '<div class="grades-header"><span>Payment plan</span></div>' +
+            (rows || '<div class="faint" style="margin-bottom:6px;">No payments yet - add the first one below.</div>') +
+            '<div class="add-pay-row">' +
+              '<input type="date" class="add-date" value="' + today + '">' +
+              '<input type="number" step="0.01" min="0" class="add-amount" placeholder="Amount (USD)">' +
+              '<button class="ghost" data-action="pay-add" style="padding:6px 12px;font-size:12px;">Add payment</button>' +
             '</div>' +
-            '<div class="card-actions" style="flex-direction:column;align-items:flex-end;justify-content:center;">' +
-              '<span class="stat-value green" style="font-size:16px;">'+fmtUSD(r.total)+'</span>' +
-              '<span style="font-size:11px;color:var(--text-faint);">collected</span>' +
-              (r.expTotal > 0 ? '<span style="font-size:12px;color:var(--text-soft);margin-top:4px;">'+fmtUSD(r.total + r.expTotal)+' if all paid</span>' : '') +
+            '<div class="plan-foot">' +
+              '<span>Plan total <b>' + fmtUSD(total) + '</b></span>' +
+              '<span>Paid <b>' + fmtUSD(paid) + '</b></span>' +
+              '<span>Left <b>' + fmtUSD(Math.max(0, round2(total - paid))) + '</b></span>' +
+              '<span>Commission so far <b>' + fmtUSD(round2(paid * saleRate(sl) / 100)) + '</b></span>' +
             '</div>' +
           '</div>' +
         '</div>'
@@ -1690,19 +1728,11 @@
     }).join("");
   }
 
-  function renderPayrollStats(){
-    var earnedTotal = 0, pendingTotal = 0;
-    data.sales.forEach(function(sl){
-      earnedTotal += saleCommissionEarned(sl);
-      pendingTotal += (saleCommissionTotal(sl) - saleCommissionEarned(sl));
-    });
-    var npd = nextPayDate();
-    var wrap = document.getElementById("payroll-stats");
-    wrap.innerHTML =
-      '<div class="stat-tile"><div class="stat-label">Base Salary</div><div class="stat-value">$700/mo</div></div>' +
-      '<div class="stat-tile"><div class="stat-label">Next Pay Date</div><div class="stat-value accent">'+fmtDateObj(npd)+'</div></div>' +
-      '<div class="stat-tile"><div class="stat-label">Commission Earned</div><div class="stat-value green">'+fmtUSD(earnedTotal)+'</div></div>' +
-      '<div class="stat-tile"><div class="stat-label">Commission Pending</div><div class="stat-value yellow">'+fmtUSD(pendingTotal)+'</div></div>';
+  function renderPayroll(){
+    renderPayrollWarnings();
+    renderRangePreview();
+    renderSales();
+    renderPaychecks();
   }
 
   function renderAll(){
@@ -1712,10 +1742,7 @@
     renderJobTasks();
     renderTasks();
     renderSavings();
-    renderPaychecks();
-    renderSales();
-    renderPayrollStats();
-    renderPayPeriods();
+    renderPayroll();
   }
 
   /* ---------- event delegation for card actions ---------- */
@@ -1807,85 +1834,53 @@
       proj2.grades = (proj2.grades || []).filter(function(g){ return g.id !== gid; });
       save();
       renderProjects();
-    } else if(action === "add-installment"){
-      var dateInput = card.querySelector(".inst-date-input");
-      var amountInput = card.querySelector(".inst-amount-input");
-      var idate = dateInput.value || todayStr();
-      var iamount = parseFloat(amountInput.value);
-      if(!iamount || iamount <= 0) return;
-      var sale = findById("sales", id);
-      if(!sale.installments) sale.installments = [];
-      sale.installments.push({ id: uid(), date: idate, amount: iamount });
-      var dueIdx = (sale.schedule || []).slice().sort(byDateAsc).map(function(s){ return s.id; })
-        .filter(function(sid){
-          var it = sale.schedule.filter(function(x){ return x.id === sid; })[0];
-          return Math.abs((Number(it.amount)||0) - iamount) < 0.011;
-        })[0];
-      if(dueIdx) sale.schedule = sale.schedule.filter(function(x){ return x.id !== dueIdx; });
-      save();
-      renderSales();
-      renderPayrollStats();
-      renderPayPeriods();
-    } else if(action === "add-scheduled"){
-      var sdate = card.querySelector(".sched-date-input").value;
-      var samount = parseFloat(card.querySelector(".sched-amount-input").value);
-      if(!sdate || !samount || samount <= 0) return;
-      var saleS = findById("sales", id);
-      if(!saleS.schedule) saleS.schedule = [];
-      saleS.schedule.push({ id: uid(), date: sdate, amount: samount });
-      save();
-      renderSales();
-    } else if(action === "delete-scheduled"){
-      var saleD = findById("sales", id);
-      saleD.schedule = (saleD.schedule || []).filter(function(x){ return x.id !== e.target.dataset.schedId; });
-      save();
-      renderSales();
-    } else if(action === "receive-scheduled"){
-      var saleR = findById("sales", id);
-      var item = (saleR.schedule || []).filter(function(x){ return x.id === e.target.dataset.schedId; })[0];
-      if(!item) return;
-      if(!saleR.installments) saleR.installments = [];
-      saleR.installments.push({ id: uid(), date: todayStr(), amount: Number(item.amount) || 0 });
-      saleR.schedule = saleR.schedule.filter(function(x){ return x.id !== item.id; });
-      save();
-      renderSales();
-      renderPayrollStats();
-      renderPayPeriods();
-    } else if(action === "delete-installment"){
-      var iid = e.target.dataset.instId;
-      var sale2 = findById("sales", id);
-      sale2.installments = (sale2.installments || []).filter(function(i){ return i.id !== iid; });
-      save();
-      renderSales();
-      renderPayrollStats();
-      renderPayPeriods();
     }
   }
 
-  document.getElementById("list-sales").addEventListener("change", function(e){
-    if(e.target.classList.contains("comm-check")){
-      var ccard = e.target.closest(".card");
-      var csale = findById("sales", ccard.dataset.id);
-      var instId = e.target.dataset.instId;
-      if(instId){
-        var inst = (csale.installments || []).filter(function(i){ return i.id === instId; })[0];
-        if(inst) inst.payrollPaid = e.target.checked;
-      } else {
-        csale.payrollPaid = e.target.checked;
-      }
-      save();
-      renderPayPeriods();
+  // Payment plan on each client: add or delete a payment, edit its date or amount, tick it as paid.
+  var salesList = document.getElementById("list-sales");
+  salesList.addEventListener("click", function(e){
+    var action = e.target.dataset && e.target.dataset.action;
+    if(action !== "pay-add" && action !== "pay-del") return;
+    var card = e.target.closest(".card");
+    var sl = card && findById("sales", card.dataset.id);
+    if(!sl) return;
+    if(!Array.isArray(sl.payments)) sl.payments = [];
+    if(action === "pay-add"){
+      var d = card.querySelector(".add-date").value;
+      var a = parseFloat(card.querySelector(".add-amount").value);
+      if(!d || !(a > 0)) return;
+      sl.payments.push({ id: uid(), date: d, amount: round2(a), paid: false });
+    } else {
+      var row = e.target.closest(".pay-row");
+      if(!row || !confirm("Delete this payment?")) return;
+      sl.payments = sl.payments.filter(function(p){ return p.id !== row.dataset.payId; });
+    }
+    save();
+    renderPayroll();
+  });
+  salesList.addEventListener("change", function(e){
+    var t = e.target;
+    var row = t.closest(".pay-row");
+    var card = t.closest(".card");
+    if(!row || !card) return;
+    var sl = findById("sales", card.dataset.id);
+    var p = sl && (sl.payments || []).filter(function(x){ return x.id === row.dataset.payId; })[0];
+    if(!p) return;
+    if(t.classList.contains("pay-paid")){
+      p.paid = t.checked;
+    } else if(t.classList.contains("pay-date")){
+      if(!t.value){ renderPayroll(); return; }
+      p.date = t.value;
+    } else if(t.classList.contains("pay-amount")){
+      var v = parseFloat(t.value);
+      if(!(v >= 0)){ renderPayroll(); return; }
+      p.amount = round2(v);
+    } else {
       return;
     }
-    if(e.target.classList.contains("card-check")){
-      var card = e.target.closest(".card");
-      var entry = findById("sales", card.dataset.id);
-      entry.paidFull = e.target.checked;
-      save();
-      renderSales();
-      renderPayrollStats();
-      renderPayPeriods();
-    }
+    save();
+    renderPayroll();
   });
 
   // allow Enter key inside grade/installment inputs to trigger add
@@ -1897,11 +1892,10 @@
       if(addBtn) addBtn.click();
     }
   });
-  document.getElementById("list-sales").addEventListener("keydown", function(e){
-    if(e.key === "Enter" && e.target.classList.contains("inst-amount-input")){
+  salesList.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && e.target.classList.contains("add-amount")){
       e.preventDefault();
-      var card = e.target.closest(".card");
-      var addBtn = card.querySelector('[data-action="add-installment"]');
+      var addBtn = e.target.closest(".card").querySelector('[data-action="pay-add"]');
       if(addBtn) addBtn.click();
     }
   });
@@ -1934,6 +1928,36 @@
     return clone;
   }
 
+  // Add an imported client's payments to an existing client without ever counting a payment twice.
+  function mergePayments(existing, incoming){
+    var near = function(a, b){ return Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.011; };
+    var pool = existing.slice(), rest = [];
+    incoming.forEach(function(ip){
+      var j = -1;
+      for(var k = 0; k < pool.length; k++){
+        if(pool[k].date === ip.date && near(pool[k].amount, ip.amount)){ j = k; break; }
+      }
+      if(j >= 0){
+        var same = pool.splice(j, 1)[0];
+        if(ip.paid) same.paid = true;
+      } else {
+        rest.push(ip);
+      }
+    });
+    rest.forEach(function(ip){
+      var j = -1;
+      for(var k = 0; k < pool.length; k++){
+        if(near(pool[k].amount, ip.amount)){ j = k; break; }
+      }
+      if(j >= 0){
+        var twin = pool.splice(j, 1)[0];
+        if(ip.paid && !twin.paid){ twin.paid = true; twin.date = ip.date; }
+      } else {
+        existing.push(ip);
+      }
+    });
+  }
+
   function importData(jsonText){
     var imported;
     try{
@@ -1942,69 +1966,42 @@
       alert("Could not import file: invalid JSON.");
       return;
     }
-    var nestedKeyFor = { projects: ["grades"], sales: ["installments", "schedule"] };
     var keys = ["ideas","projects","goals","jobTasks","tasks","savings","paychecks","sales"];
     var count = 0, updated = 0;
     keys.forEach(function(k){
-      if(Array.isArray(imported[k])){
-        imported[k].forEach(function(item){
-          var clone = cloneWithFreshIds(item, nestedKeyFor[k]);
-          // Sales are matched by client name so re-importing updates them instead of duplicating.
-          var match = k === "sales" ? data.sales.filter(function(s){
+      if(!Array.isArray(imported[k])) return;
+      imported[k].forEach(function(item){
+        var clone = cloneWithFreshIds(item, k === "projects" ? ["grades"] : []);
+        if(k === "sales"){
+          // Clients are matched by name, so importing again updates them instead of duplicating.
+          ensurePayments(clone);
+          clone.payments.forEach(function(p){ p.id = uid(); });
+          var match = data.sales.filter(function(s){
             return (s.name || "").trim().toLowerCase() === (clone.name || "").trim().toLowerCase();
-          })[0] : null;
+          })[0];
           if(match){
-            mergeSale(match, clone);
+            ensurePayments(match);
+            if(clone.email && !match.email) match.email = clone.email;
+            mergePayments(match.payments, clone.payments);
             updated++;
-          } else {
-            data[k].push(clone);
-            count++;
+            return;
           }
-        });
-      }
+        }
+        data[k].push(clone);
+        count++;
+      });
     });
-    migrateSchedules();
+    normalizeSales();
     save();
     renderAll();
-    alert("Added " + count + " new entr" + (count === 1 ? "y" : "ies") + (updated ? " and updated " + updated + " existing sale" + (updated === 1 ? "" : "s") : "") + ".");
+    alert("Added " + count + " new entr" + (count === 1 ? "y" : "ies") + (updated ? " and updated " + updated + " existing client" + (updated === 1 ? "" : "s") : "") + ".");
   }
 
-  // Bring an existing sale in line with an imported one without losing what was logged in the app:
-  // payments already recorded (and their payroll ticks) are kept, new ones are added, and the
-  // upcoming-payments list is replaced with the file's (minus anything already logged).
-  function mergeSale(existing, inc){
-    var near = function(a, b){ return Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.011; };
-    existing.paymentType = inc.paymentType;
-    existing.saleAmount = inc.saleAmount;
-    if(inc.rate) existing.rate = inc.rate;
-    if(inc.email) existing.email = inc.email;
-    if(/Payment plan:/.test(existing.notes || "") || !existing.notes) existing.notes = inc.notes || existing.notes;
-    if(inc.paymentType === "full"){
-      if(inc.paidFull) existing.paidFull = true;
-      return;
-    }
-    if(!existing.installments) existing.installments = [];
-    var unmatched = existing.installments.slice();
-    (inc.installments || []).forEach(function(ii){
-      var idx = -1;
-      for(var j = 0; j < unmatched.length; j++){
-        if(near(unmatched[j].amount, ii.amount)){ idx = j; break; }
-      }
-      if(idx >= 0){ unmatched.splice(idx, 1); } else { existing.installments.push(ii); }
-    });
-    var schedule = (inc.schedule || []).slice();
-    unmatched.forEach(function(u){
-      for(var j = 0; j < schedule.length; j++){
-        if(near(schedule[j].amount, u.amount)){ schedule.splice(j, 1); break; }
-      }
-    });
-    existing.schedule = schedule;
-  }
-
-  var reportMonth = document.getElementById("report-month");
-  reportMonth.value = todayStr().slice(0, 7);
-  document.getElementById("btn-report-first").addEventListener("click", function(){ generatePeriodReport("A"); });
-  document.getElementById("btn-report-second").addEventListener("click", function(){ generatePeriodReport("B"); });
+  document.getElementById("rng-from").addEventListener("change", rangeChanged);
+  document.getElementById("rng-to").addEventListener("change", rangeChanged);
+  document.getElementById("rng-first").addEventListener("click", function(){ setHalf("A"); });
+  document.getElementById("rng-second").addEventListener("click", function(){ setHalf("B"); });
+  document.getElementById("rng-pdf").addEventListener("click", downloadRangePdf);
   document.getElementById("btn-export").addEventListener("click", exportData);
   document.getElementById("btn-import").addEventListener("click", function(){
     document.getElementById("import-file-input").click();
@@ -2018,7 +2015,8 @@
     e.target.value = "";
   });
 
-  migrateSchedules();
+  normalizeSales();
+  initRange();
   renderAll();
 })();
 </script>
