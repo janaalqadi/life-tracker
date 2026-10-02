@@ -305,6 +305,8 @@
   .add-pay-row input[type=number]{width:120px;padding:6px 8px;}
   .field-error{color:var(--red);font-size:12px;margin-top:6px;line-height:1.4;}
   input.has-error{border-color:var(--red);}
+  .search-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .search-bar input{max-width:420px;flex:1;min-width:200px;}
   .client-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
   .client-head-main{min-width:0;}
   @media (max-width:480px){
@@ -465,6 +467,10 @@
         <div style="font-size:12.5px;color:var(--text-faint);">Add each payment with its date, then tick it once the client has paid. A payment counts in the period of its date.</div>
         <button class="primary" data-open-form="sale">+ Add Client</button>
       </div>
+      <div class="search-bar">
+        <input type="search" id="client-search" placeholder="Search clients by name, phone number or email" autocomplete="off">
+        <span id="client-search-count" class="faint"></span>
+      </div>
       <div class="card-list" id="list-sales"></div>
 
       <div class="section-heading">Paychecks</div>
@@ -619,6 +625,10 @@
       </div>
 
       <!-- sale / commission -->
+      <div class="field" id="f-salephone-wrap" style="display:none">
+        <label>Phone number</label>
+        <input type="text" id="f-salephone" placeholder="e.g. 555 123 4567">
+      </div>
       <div class="field" id="f-saleemail-wrap" style="display:none">
         <label>Client Email</label>
         <input type="text" id="f-saleemail" placeholder="name@example.com">
@@ -785,7 +795,7 @@
     task: ["f-taskdue-wrap","f-linkproject-wrap","f-complete-wrap"],
     saving: ["f-savingtype-wrap","f-savingdate-wrap","f-savingamount-wrap"],
     paycheck: ["f-paycheckdate-wrap","f-paycheckamount-wrap","f-paycheckreceived-wrap"],
-    sale: ["f-saleemail-wrap","f-salerate-wrap"]
+    sale: ["f-salephone-wrap","f-saleemail-wrap","f-salerate-wrap"]
   };
 
   var statusOptions = {
@@ -808,7 +818,7 @@
       "f-targetdate-wrap","f-taskdue-wrap","f-linkproject-wrap","f-status-wrap","f-complete-wrap",
       "f-savingtype-wrap","f-savingdate-wrap","f-savingamount-wrap",
       "f-paycheckdate-wrap","f-paycheckamount-wrap","f-paycheckreceived-wrap",
-      "f-saleemail-wrap","f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"];
+      "f-salephone-wrap","f-saleemail-wrap","f-saledate-wrap","f-saleamount-wrap","f-salerate-wrap","f-saletype-wrap","f-salepaidfull-wrap"];
     allWraps.forEach(function(id){ document.getElementById(id).style.display = "none"; });
     (fieldGroups[type] || []).forEach(function(id){ document.getElementById(id).style.display = ""; });
 
@@ -884,6 +894,7 @@
         document.getElementById("f-paycheckreceived").checked = !!entry.received;
       } else if(type === "sale"){
         document.getElementById("f-saleemail").value = saleEmail(entry);
+        document.getElementById("f-salephone").value = entry.phone || "";
         document.getElementById("f-salerate").value = entry.rate != null ? entry.rate : 10;
       }
     } else {
@@ -1035,6 +1046,7 @@
       var slEntry = editingId ? findById("sales", editingId) : { id: uid(), payments: [] };
       slEntry.name = name;
       slEntry.email = document.getElementById("f-saleemail").value.trim();
+      slEntry.phone = document.getElementById("f-salephone").value.trim();
       slEntry.rate = parseFloat(document.getElementById("f-salerate").value) || 10;
       slEntry.notes = notes;
       if(!Array.isArray(slEntry.payments)) slEntry.payments = [];
@@ -1705,15 +1717,42 @@
     }).join("");
   }
 
+  // Every word typed must appear in the client's name, email, phone, notes or a payment amount.
+  // A phone-looking word also matches the phone number ignoring spaces and dashes.
+  function clientMatches(sl, query){
+    var words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if(!words.length) return true;
+    var parts = [sl.name, saleEmail(sl), sl.phone, sl.notes];
+    (sl.payments || []).forEach(function(p){ parts.push((Number(p.amount) || 0).toFixed(2)); });
+    var hay = parts.join(" ").toLowerCase();
+    var phoneDigits = (sl.phone || "").replace(/\D/g, "");
+    return words.every(function(w){
+      if(hay.indexOf(w) !== -1) return true;
+      var digits = w.replace(/\D/g, "");
+      return digits.length >= 3 && /^[\d().+\-]+$/.test(w) && phoneDigits.indexOf(digits) !== -1;
+    });
+  }
+
   function renderSales(){
     var list = document.getElementById("list-sales");
+    var counter = document.getElementById("client-search-count");
+    var query = document.getElementById("client-search").value;
     if(data.sales.length === 0){
+      counter.textContent = "";
       list.innerHTML = '<div class="empty-state">No clients yet. Add one, then add their payments.</div>';
+      return;
+    }
+    var shown = data.sales.filter(function(sl){ return clientMatches(sl, query); });
+    counter.textContent = query.trim()
+      ? "Showing " + shown.length + " of " + data.sales.length
+      : data.sales.length + " client" + (data.sales.length === 1 ? "" : "s");
+    if(!shown.length){
+      list.innerHTML = '<div class="empty-state">No client matches "' + esc(query.trim()) + '".</div>';
       return;
     }
     var dup = duplicateNames();
     var today = todayStr();
-    list.innerHTML = data.sales.map(function(sl){
+    list.innerHTML = shown.map(function(sl){
       var rows = (sl.payments || []).slice().sort(byDateAsc).map(function(p){
         return '<div class="pay-row' + (p.paid ? ' is-paid' : '') + '" data-pay-id="' + p.id + '">' +
           '<input type="date" class="pay-date" value="' + esc(p.date) + '" title="The day this payment is due or was paid. It decides which period it counts in.">' +
@@ -1734,7 +1773,7 @@
                 '<span class="card-title">' + esc(sl.name) + '</span>' +
                 (isDup ? '<span class="badge status-inprogress">Duplicate</span>' : '') +
               '</div>' +
-              (email ? '<div class="card-meta"><span>' + esc(email) + '</span></div>' : '') +
+              ((email || sl.phone) ? '<div class="card-meta">' + (sl.phone ? '<span>' + esc(sl.phone) + '</span>' : '') + (email ? '<span>' + esc(email) + '</span>' : '') + '</div>' : '') +
             '</div>' +
             '<div class="card-actions">' +
               '<button class="icon-btn" data-action="edit">Edit</button>' +
@@ -2016,6 +2055,7 @@
           if(match){
             ensurePayments(match);
             if(clone.email && !match.email) match.email = clone.email;
+            if(clone.phone && !match.phone) match.phone = clone.phone;
             mergePayments(match.payments, clone.payments);
             updated++;
             return;
@@ -2031,6 +2071,7 @@
     alert("Added " + count + " new entr" + (count === 1 ? "y" : "ies") + (updated ? " and updated " + updated + " existing client" + (updated === 1 ? "" : "s") : "") + ".");
   }
 
+  document.getElementById("client-search").addEventListener("input", renderSales);
   document.getElementById("rng-from").addEventListener("change", rangeChanged);
   document.getElementById("rng-to").addEventListener("change", rangeChanged);
   document.getElementById("rng-first").addEventListener("click", function(){ setHalf("A"); });
