@@ -1353,8 +1353,8 @@
       return;
     }
     var r = rangeReport(from, to);
-    if(!r.rows.length && !r.notCounted.length){
-      alert("There are no payments in that period.");
+    if(!r.rows.length){
+      alert("No payments are ticked as paid in that period, so there is nothing to put in the PDF.");
       return;
     }
     var btn = document.getElementById("rng-pdf");
@@ -1427,19 +1427,6 @@
           head: [["Client", "Email", "Payments made", "Paid", "Commission"]],
           body: body,
           columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 150 }, 2: { cellWidth: 110 }, 3: { halign: "right", cellWidth: 70 }, 4: { halign: "right", cellWidth: 75 } }
-        });
-      }
-
-      if(r.notCounted.length){
-        heading("Not counted - not ticked as paid yet");
-        var nbody = r.notCounted.map(function(n){
-          return [n.sale.name || "", saleEmail(n.sale) || "-", pdfDate(n.date), pdfMoney(n.amount)];
-        });
-        nbody.push([{ content: "TOTAL", styles: bold }, "", "", { content: pdfMoney(r.notCountedAmount), styles: bold }]);
-        table({
-          head: [["Client", "Email", "Date", "Amount"]],
-          body: nbody,
-          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 190 }, 2: { cellWidth: 100 }, 3: { halign: "right", cellWidth: 80 } }
         });
       }
 
