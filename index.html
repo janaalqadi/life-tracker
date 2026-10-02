@@ -303,6 +303,8 @@
   .add-pay-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
   .add-pay-row input[type=date]{width:auto;padding:6px 8px;}
   .add-pay-row input[type=number]{width:120px;padding:6px 8px;}
+  .field-error{color:var(--red);font-size:12px;margin-top:6px;line-height:1.4;}
+  input.has-error{border-color:var(--red);}
   .client-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
   .client-head-main{min-width:0;}
   @media (max-width:480px){
@@ -512,6 +514,7 @@
       <div class="field" id="f-name-wrap">
         <label id="f-name-label">Title</label>
         <input type="text" id="f-name" placeholder="e.g. Build a mobile app">
+        <div id="f-name-error" class="field-error" style="display:none"></div>
       </div>
 
       <!-- project category -->
@@ -896,8 +899,35 @@
     }
 
     overlay.classList.add("open");
+    checkClientName();
     if(!noNameTypes[type]) document.getElementById("f-name").focus();
   }
+
+  // When adding or editing a client, flag a name that another client already has.
+  function clientNameTaken(){
+    var name = document.getElementById("f-name").value.trim().toLowerCase();
+    if(currentType !== "sale" || !name) return null;
+    var self = editingId ? findById("sales", editingId) : null;
+    if(self && (self.name || "").trim().toLowerCase() === name) return null;
+    return data.sales.filter(function(s){
+      return s.id !== editingId && (s.name || "").trim().toLowerCase() === name;
+    })[0] || null;
+  }
+  function checkClientName(){
+    var box = document.getElementById("f-name-error");
+    var input = document.getElementById("f-name");
+    var clash = clientNameTaken();
+    if(clash){
+      box.textContent = '"' + clash.name + '" is already in your client list. Add their payments to that client instead of adding them again.';
+      box.style.display = "";
+      input.classList.add("has-error");
+    } else {
+      box.style.display = "none";
+      input.classList.remove("has-error");
+    }
+    return !clash;
+  }
+  document.getElementById("f-name").addEventListener("input", checkClientName);
 
   function populateStatus(type){
     var sel = document.getElementById("f-status");
@@ -938,6 +968,10 @@
     var name = document.getElementById("f-name").value.trim();
 
     if(!noNameTypes[currentType] && !name){
+      document.getElementById("f-name").focus();
+      return;
+    }
+    if(!checkClientName()){
       document.getElementById("f-name").focus();
       return;
     }
